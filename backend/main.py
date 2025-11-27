@@ -27,7 +27,7 @@ def list_games():
             "name": "Snake",
             "slug": "snake",
             "description": "Classic snake game",
-            "thumbnail": "/games/snake/thumb.png",
+            "thumbnail": "public/games/snake/thumb.png",
         },
         {
             "id": 2,
