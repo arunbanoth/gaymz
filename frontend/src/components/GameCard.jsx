@@ -18,14 +18,21 @@ export default function GameCard({ game }) {
     return (game?.name || "").toLowerCase().replace(/\s+/g, "-");
   }, [game]);
 
-  // thumbnail builder
-  const thumb = useMemo(() => {
-    if (!game?.thumbnail) return null;
-    const t = String(game.thumbnail);
-    if (/^https?:\/\//i.test(t) || /^data:/i.test(t) || /^blob:/i.test(t)) return t;
-    if (t.startsWith("/")) return `${BACKEND}${t}`;
-    return `${BACKEND}/${t}`;
-  }, [game?.thumbnail, BACKEND]);
+  // Simple thumbnail builder — prefer frontend public files (Vercel)
+const thumb = useMemo(() => {
+  if (!game?.thumbnail) return null;
+  const t = String(game.thumbnail).trim();
+
+  // If already absolute (http(s), data:, blob:) return as-is
+  if (/^https?:\/\//i.test(t) || /^data:/i.test(t) || /^blob:/i.test(t)) {
+    return t;
+  }
+
+  // If thumbnail looks like "/games/slug/thumb.png" or "games/slug/thumb.png"
+  // use it as a frontend-relative path so Vercel serves it:
+  if (t.startsWith("/")) return t;    // -> "/games/snake/thumb.png"
+  return `/${t}`;                     // -> "games/snake/thumb.png" -> "/games/snake/thumb.png"
+}, [game?.thumbnail]);
 
   const handleLaunch = useCallback(
     async (ev) => {
