@@ -1,56 +1,53 @@
-GAYMZ — Web Arcade Project
+# GAYMZ — Web Arcade Project
 
-GAYMZ is a browser-based mini-arcade collection built using a React (Vite) frontend and a FastAPI backend.
-Each game is lightweight, loads instantly in the browser, and is served as static files through Vercel.
+GAYMZ is a browser-based arcade collection built with a React (Vite) frontend and a FastAPI backend.  
+Each game runs fully in the browser using JavaScript and Canvas. The project is designed to be easily extendable so new games can be added with minimal effort.
 
-The project is designed to be extendable: new games can be added simply by placing them in the public/games/ directory and updating the backend API.
+---
 
-Live Demo
+## Live Demo
 
-Frontend:
+Frontend:  
 https://gaymz.vercel.app/
 
-Backend API:
+Backend API:  
 https://gaymz-backend.onrender.com
 
-Test endpoint:
+Test endpoint:  
 https://gaymz-backend.onrender.com/games
 
-Games Included
+---
 
-Snake
+## Overview
 
-Comet Collector
+The GAYMZ project contains multiple standalone web games displayed inside a modern launcher UI.  
+Each game includes its own assets, HTML file, and thumbnail, stored inside the `public/games/` folder.
 
-Shadow Mirror
+Games Included:
+- Snake  
+- Comet Collector  
+- Shadow Mirror  
+- Tether Twins  
+- Blaster Dash  
 
-Tether Twins
+---
 
-Blaster Dash
+## Features
 
-All games run inside the browser using JavaScript and Canvas.
+- Multiple independent browser games  
+- React + Vite based frontend  
+- FastAPI backend returning game metadata  
+- Thumbnail system for each game  
+- Clean and structured UI layout  
+- Fully deployed on Vercel (frontend) and Render (backend)  
+- Easy to add new games  
+- Responsive design  
 
-Features
+---
 
-Multiple standalone games inside a single launcher
+## Project Structure
 
-Responsive grid layout
-
-Clean card-based UI
-
-Thumbnail support for each game
-
-Light/Dark mode toggle
-
-Modular structure for adding new games
-
-FastAPI backend serving game metadata
-
-Vercel and Render deployed
-
-Fast loading with Vite build
-
-Project Structure
+```
 gaymz/
 │
 ├── backend/
@@ -63,20 +60,14 @@ gaymz/
 │   ├── public/
 │   │   └── games/
 │   │       ├── snake/
-│   │       │   ├── index.html
-│   │       │   └── thumb.png
 │   │       ├── comet-collector/
-│   │       ├── tether-twins/
 │   │       ├── shadow-mirror/
+│   │       ├── tether-twins/
 │   │       └── blaster-dash/
 │   │
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── GameCard.jsx
-│   │   │   └── ThemeToggle.jsx
 │   │   ├── pages/
-│   │   │   ├── Dashboard.jsx
-│   │   │   └── About.jsx
 │   │   ├── App.jsx
 │   │   ├── main.jsx
 │   │   └── index.css
@@ -84,118 +75,125 @@ gaymz/
 │   ├── package.json
 │   └── vite.config.js
 │
-├── .gitignore
 └── README.md
+```
 
-Backend (FastAPI)
+---
 
-The backend serves a simple API with the list of games.
+## Backend Development (FastAPI)
 
-Example response from /games:
+Start backend locally:
 
-[
-  {
-    "id": 1,
-    "name": "Snake",
-    "slug": "snake",
-    "description": "Classic snake game",
-    "thumbnail": "/games/snake/thumb.png"
-  },
-  ...
-]
-
-
-Local development:
-
+```
 cd backend
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
+```
 
-Frontend (React + Vite)
+Backend will run at:
 
-Local development:
+```
+http://127.0.0.1:8000
+```
 
+---
+
+## Frontend Development (React + Vite)
+
+Start frontend locally:
+
+```
 cd frontend
 npm install
 npm run dev
+```
 
+Application will run at:
 
-Build:
+```
+http://localhost:5173
+```
 
+Build for production:
+
+```
 npm run build
+```
 
+---
 
-Vercel deploy uses:
+## Deployment
 
-Root Directory: frontend
+### Backend (Render)
+- Environment: Python  
+- Root Directory: backend  
+- Build Command:  
+  `pip install -r requirements.txt`  
+- Start Command:  
+  `uvicorn main:app --host 0.0.0.0 --port $PORT`  
 
-Build Command: npm run build
+### Frontend (Vercel)
+- Root Directory: frontend  
+- Build Command: `npm run build`  
+- Output Directory: `dist`  
 
-Output Directory: dist
+Add environment variable:
 
-Deployment
-Backend (Render)
-
-Configuration:
-
-Environment: Python
-
-Root Directory: backend
-
-Build Command:
-pip install -r requirements.txt
-
-Start Command:
-uvicorn main:app --host 0.0.0.0 --port $PORT
-
-Frontend (Vercel)
-
-Configuration:
-
-Root Directory: frontend
-
-Build Command: npm run build
-
-Output Directory: dist
-
-Environment Variable:
-
+```
 VITE_BACKEND_URL = https://gaymz-backend.onrender.com
+```
 
-Adding a New Game
+---
 
-Create a new folder under frontend/public/games/<game-name>/.
+## Adding a New Game
 
-Add index.html, game JavaScript files, and a thumb.png.
+1. Create a folder under:
 
-Update backend list inside backend/main.py:
+```
+frontend/public/games/<game-name>/
+```
 
+2. Add:
+- index.html
+- JavaScript game logic
+- thumb.png (thumbnail image)
+
+3. Update backend list in:
+
+```
+backend/main.py
+```
+
+Example:
+
+```
 {
   "id": 6,
   "name": "New Game",
   "slug": "new-game",
-  "description": "Short description",
+  "description": "Description here",
   "thumbnail": "/games/new-game/thumb.png"
 }
+```
 
+4. Commit and push to GitHub.  
+Render and Vercel will auto redeploy.
 
-Push to GitHub.
-Render and Vercel will auto-deploy.
+---
 
-Future Work
+## Future Improvements
 
-High score system
+- Add high score system  
+- Add authentication support  
+- Save progress per game  
+- Add sound and settings options  
+- Add developer tools for creating games faster  
 
-Sound settings per game
+---
 
-User accounts
+## License
 
-Cloud storage for game progress
+This project is open for learning and personal portfolio use.
 
-More creative games
-
-License
-
-Open source for educational and portfolio purposes.
