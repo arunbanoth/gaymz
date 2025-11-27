@@ -6,12 +6,12 @@ app = FastAPI(title="GAYMZ Backend")
 
 # Update this to your frontend URL after deployment
 FRONTEND_URLS = [
-    "http://localhost:5173",
+    "https://gaymz.vercel.app",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=FRONTEND_URLS + ["*"],  # loosen during dev
+    allow_origins=[FRONTEND_URLS, "http://localhost:5173"],  # loosen during dev
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
