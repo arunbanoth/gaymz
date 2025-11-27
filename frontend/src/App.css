@@ -1,0 +1,199 @@
+/* ===========================
+   GAYMZ - global styles
+   Paste this whole file into:
+   frontend/src/index.css
+   =========================== */
+
+/* ---------- Base / resets ---------- */
+* { box-sizing: border-box; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+html,body,#root { height: 100%; margin: 0; padding: 0; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+img { display: block; max-width: 100%; }
+
+/* ---------- Theme variables ---------- */
+:root{
+  --bg: #ffffff;
+  --fg: #0b1220;
+  --muted: #6b7280;
+  --card-bg: #ffffff;
+  --card-border: #eef2f7;
+  --accent-start: #ec4899;
+  --accent-end: #6366f1;
+  --glass: rgba(255,255,255,0.6);
+  --shadow-1: 0 6px 20px rgba(2,6,23,0.06);
+  --radius: 12px;
+}
+
+/* dark mode overrides (applied when <html> has class "dark") */
+.dark {
+  --bg: #07101b;
+  --fg: #e6eef8;
+  --muted: #9ca3af;
+  --card-bg: #0f172a;
+  --card-border: #1f2937;
+  --accent-start: #7c3aed;
+  --accent-end: #06b6d4;
+  --glass: rgba(255,255,255,0.02);
+  --shadow-1: 0 8px 36px rgba(2,6,23,0.55);
+}
+
+/* explicit light class if you want to force it */
+.light { /* no vars needed; defaults are light */ }
+
+/* page background */
+body { background: var(--bg); color: var(--fg); }
+
+/* ---------- Layout helpers ---------- */
+.app-container { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }
+
+/* ---------- Header / Title ---------- */
+.dash-header { width:100%; max-width:1200px; margin: 36px auto 12px; padding: 0 18px; text-align:center; }
+.site-title {
+  margin:0 auto;
+  display:inline-block;
+  font-size:36px;
+  font-weight:800;
+  letter-spacing:1px;
+  padding:8px 20px;
+  border-radius:999px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  color: var(--fg);
+  text-shadow: 0 8px 24px rgba(99,102,241,0.06);
+}
+
+/* subtitle and progress bar */
+.dash-header p { margin:10px 0 8px; color:var(--muted); font-size:14px; }
+.header-progress {
+  height:6px;
+  width:160px;
+  border-radius:999px;
+  margin: 6px auto;
+  background: linear-gradient(90deg, var(--accent-start), var(--accent-end));
+  box-shadow: 0 6px 20px rgba(99,102,241,0.08);
+}
+
+/* theme toggle emoji centered under header (small button) */
+.theme-toggle-btn {
+  margin-top:12px;
+  border:0;
+  background:transparent;
+  cursor:pointer;
+  font-size:22px;
+  padding:10px;
+  border-radius:999px;
+  box-shadow: var(--shadow-1);
+}
+
+/* ---------- Games grid ---------- */
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px;
+
+  /* The 3 important lines */
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+
+  margin-top: 28px;
+  padding: 0 18px;
+}
+
+/* responsive */
+@media (max-width: 1000px) {
+  .games-grid { grid-template-columns: repeat(2, minmax(0,1fr)); max-width:940px; }
+}
+@media (max-width: 660px) {
+  .games-grid { grid-template-columns: repeat(1, minmax(0,1fr)); max-width:640px; gap:18px; padding: 0 12px; }
+}
+
+/* ---------- GameCard (primary card style) ---------- */
+.game-card {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  justify-content:flex-start;
+  width:100%;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow-1);
+  transition: transform .16s ease, box-shadow .16s ease;
+  cursor: pointer;
+  overflow: visible;
+}
+
+/* hover / focus */
+.game-card:hover { transform: translateY(-6px); box-shadow: 0 18px 40px rgba(2,6,23,0.08); outline: none; }
+.game-card:active { transform: translateY(-2px); }
+
+/* head/title inside card */
+.game-card-head { margin-bottom: 8px; }
+.game-title { margin: 0; font-size: 18px; font-weight:700; color: var(--fg); text-align:left; }
+
+/* thumbnail area */
+.thumb-wrap { width:100%; display:block; position:relative; border-radius:10px; overflow:hidden; background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01)); }
+.thumb-img { width:100%; height:180px; object-fit:cover; display:block; background:#eee; }
+
+/* placeholder look (when no thumbnail) */
+.thumb-placeholder {
+  display:flex; align-items:center; justify-content:center; height:180px; color: #8f9aa6; background:#ececec;
+  font-size:18px; font-weight:500;
+}
+
+/* card description and footer */
+.game-desc { padding: 12px 6px 6px; color:var(--muted); font-size:14px; min-height:48px; }
+.game-footer { padding: 8px 6px 2px; font-size:12px; color:var(--muted); text-align:left; }
+
+/* small launch play icon at bottom-right of thumb (floating) */
+.game-card .launch-indicator {
+  position:absolute; right:12px; bottom:12px; width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; background: linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0.03));
+  box-shadow: 0 6px 20px rgba(2,6,23,0.06); color:var(--fg); font-size:18px;
+}
+
+/* ensure images inside card are rounded slightly */
+.game-card img { border-radius: 8px; }
+
+/* small muted text */
+.small-muted { color: var(--muted); font-size:13px; }
+
+/* ---------- Overlay dialogs (pause / gameover) ---------- */
+.overlay {
+  position: fixed; inset: 0; display: none; align-items:center; justify-content:center; z-index:60;
+}
+.overlay .card-centered {
+  width: min(560px, 92%); background: var(--card-bg); padding:18px; border-radius:12px; box-shadow: var(--shadow-1); text-align:center;
+}
+
+/* show overlay when .visible added */
+.overlay.visible { display:flex; }
+
+/* buttons (simple) */
+.btn {
+  display:inline-block; padding:8px 12px; border-radius:10px; border:0; cursor:pointer; margin:6px;
+  background: linear-gradient(90deg, var(--accent-start), var(--accent-end)); color:#fff;
+  box-shadow: 0 8px 20px rgba(99,102,241,0.08);
+}
+.btn.ghost { background: transparent; color: var(--fg); border:1px solid var(--card-border); box-shadow:none; }
+
+/* ---------- Small helpers ---------- */
+.center { display:flex; align-items:center; justify-content:center; }
+.row { display:flex; gap:12px; align-items:center; }
+.muted { color:var(--muted); }
+
+/* ---------- Accessibility ---------- */
+.game-card:focus { box-shadow: 0 0 0 4px rgba(99,102,241,0.12); outline: none; }
+
+/* ---------- Footer spacing ---------- */
+.footer-space { height: 60px; }
+
+/* ---------- Misc: mobile-friendly touch targets ---------- */
+.game-card { touch-action: manipulation; -webkit-tap-highlight-color: rgba(0,0,0,0.05); }
+
+/* End of file */
+
+.dashboard-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}

@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tether Twins — GAYMZ</title>
+<style>
+:root{--bg:#eaf6ff;--fg:#0b1b2b;--card:#fff}.light{}
+body{margin:0;font-family:Inter;background:linear-gradient(180deg,#cfeefe,#ffffff);color:#0b1b2b}
+.container{padding:32px;display:flex;justify-content:center}
+.card{width:100%;max-width:980px;background:rgba(255,255,255,0.85);padding:18px;border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,.06)}
+canvas{width:100%;height:420px;border-radius:8px;background:linear-gradient(180deg,#dff6ff,#bfe8ff)}
+.small{font-size:13px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-weight:700">Tether Twins — Game 4</div>
+      <div><button id="theme">☀️</button></div>
+    </div>
+    <canvas id="c" width="920" height="420"></canvas>
+    <div class="small" style="margin-top:8px">Control the Leader (arrow keys). The Twin swings on an elastic tether. Collect orbs, avoid mines.</div>
+  </div>
+</div>
+<script>
+const c=document.getElementById('c'), ctx=c.getContext('2d'); const w=c.width, h=c.height;
+let leader={x:w/3,y:h/2,vx:0,vy:0,r:18}; let twin={angle:Math.PI/3, angVel:0, rope:160};
+let orbs=[], mines=[], score=0, gameOver=false;
+function spawn(){ if(Math.random()<0.04) orbs.push({x: Math.random()*(w-180)+90, y:-10, r:8}); if(Math.random()<0.02) mines.push({x:Math.random()*(w-180)+90,y:-10,r:10}); }
+window.addEventListener('keydown', e=>{ if(e.key==='ArrowLeft'||e.key==='a') leader.vx=-220; if(e.key==='ArrowRight'||e.key==='d') leader.vx=220; if(e.key==='ArrowUp'||e.key==='w') leader.vy=-200; if(e.key==='ArrowDown'||e.key==='s') leader.vy=200; });
+window.addEventListener('keyup', e=>{ if(['ArrowLeft','a','ArrowRight','d'].includes(e.key)) leader.vx=0; if(['ArrowUp','w','ArrowDown','s'].includes(e.key)) leader.vy=0; });
+
+let last=performance.now();
+function loop(){
+  let now=performance.now(), dt=(now-last)/1000; last=now;
+  if(Math.random()<0.02) spawn();
+  // leader physics
+  leader.x += leader.vx*dt; leader.y += leader.vy*dt;
+  leader.x = Math.max(40, Math.min(w-40, leader.x)); leader.y = Math.max(40, Math.min(h-40, leader.y));
+  // twin physics (pendulum anchored to leader)
+  let anchor = {x: leader.x + 60, y: leader.y - 30};
+  // simple pendulum integrator
+  const g = 980;
+  let a = twin.angle; let av = twin.angVel;
+  let accel = - (g / twin.rope) * Math.sin(a) * 0.015;
+  av += accel * dt * 50;
+  av *= 0.995;
+  a += av * dt * 50;
+  twin.angle = a; twin.angVel = av;
+  let tx = anchor.x + Math.sin(a)*twin.rope, ty = anchor.y + Math.cos(a)*twin.rope;
+  // update orbs/mines
+  orbs.forEach(o=> o.y += 80*dt); mines.forEach(m=> m.y += 120*dt);
+  // collisions
+  for(let i=orbs.length-1;i>=0;i--){
+    let o = orbs[i];
+    if(Math.hypot(o.x - leader.x, o.y - leader.y) < o.r + leader.r){ score++; orbs.splice(i,1); continue; }
+    if(Math.hypot(o.x - tx, o.y - ty) < o.r + 12){ score++; orbs.splice(i,1); continue; }
+    if(o.y > h+20) orbs.splice(i,1);
+  }
+  for(let i=mines.length-1;i>=0;i--){
+    let m = mines[i];
+    if(Math.hypot(m.x - leader.x, m.y - leader.y) < m.r + leader.r){ gameOver=true; }
+    if(Math.hypot(m.x - tx, m.y - ty) < m.r + 12){ gameOver=true; }
+    if(m.y > h+40) mines.splice(i,1);
+  }
+  draw(anchor, tx, ty);
+  if(gameOver){ ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(0,0,w,h); ctx.fillStyle='#fff'; ctx.fillText('Game Over - Score: '+score, w/2-80, h/2); }
+  requestAnimationFrame(loop);
+}
+function draw(anchor, tx, ty){
+  ctx.clearRect(0,0,w,h); ctx.fillStyle='linear-gradient(180deg,#dff6ff,#bfe8ff)'; ctx.fillRect(0,0,w,h);
+  // draw rope
+  ctx.strokeStyle='#e86'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(anchor.x, anchor.y); ctx.lineTo(tx, ty); ctx.stroke();
+  // draw anchor leader
+  ctx.fillStyle='#2b6cff'; ctx.beginPath(); ctx.arc(leader.x, leader.y, leader.r,0,Math.PI*2); ctx.fill();
+  // twin
+  ctx.fillStyle='#26d07e'; ctx.beginPath(); ctx.arc(tx, ty, 12,0,Math.PI*2); ctx.fill();
+  // orbs & mines
+  for(let o of orbs){ ctx.fillStyle='#ffd36b'; ctx.beginPath(); ctx.arc(o.x,o.y,o.r,0,Math.PI*2); ctx.fill(); }
+  for(let m of mines){ ctx.fillStyle='#ff7a7a'; ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#fff'; ctx.fillRect(m.x-2,m.y-2,4,4); }
+  // hud
+  ctx.fillStyle='#000'; ctx.font='14px Inter'; ctx.fillText('Score: '+score, 12, 20);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

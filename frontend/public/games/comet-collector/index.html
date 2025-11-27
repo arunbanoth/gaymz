@@ -1,0 +1,139 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Comet Collector — GAYMZ</title>
+<style>
+:root{--bg:#081028;--fg:#f3f8ff;--card:#0b1220}.light{--bg:#f8fafc;--fg:#0b1220;--card:#fff}
+html,body{margin:0;font-family:Inter,Arial;background:var(--bg);color:var(--fg)}
+.wrap{padding:36px;display:flex;justify-content:center}
+.card{width:100%;max-width:960px;background:var(--card);padding:18px;border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,.45)}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+canvas{width:100%;height:420px;border-radius:8px;background:linear-gradient(180deg,#02102a,#051026)}
+.small{font-size:13px;opacity:.9}
+.btn{padding:8px;border-radius:8px;margin-left:6px}
+.overlay{position:relative}
+.centercard{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="header">
+      <div style="font-weight:700">Comet Collector — Game 2</div>
+      <div>
+        <button id="theme" class="btn">☀️</button>
+        <button id="fs" class="btn">F</button>
+      </div>
+    </div>
+    <div class="overlay">
+      <canvas id="c" width="920" height="420"></canvas>
+      <div id="pauseOverlay" class="centercard" style="display:none">
+        <div style="background:var(--card);padding:18px;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.5)">
+          <h3>Paused</h3>
+          <div style="margin-top:8px"><button id="resume">Resume</button> <button id="restart">Restart</button></div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:10px" class="small">Move with ← → or A/D. Catch stars, avoid comets. SPACE hold to pause.</div>
+  </div>
+</div>
+
+<script>
+const c=document.getElementById('c'), ctx=c.getContext('2d');
+let theme = localStorage.getItem('g_theme')||'dark';
+function apply(){document.documentElement.classList.toggle('light', theme==='light'); document.getElementById('theme').textContent = theme==='light' ? '🌙' : '☀️'; localStorage.setItem('g_theme', theme);}
+apply();
+document.getElementById('theme').onclick = ()=>{ theme = theme==='light' ? 'dark' : 'light'; apply(); }
+document.getElementById('fs').onclick = ()=>{ if(!document.fullscreenElement) c.requestFullscreen?.(); else document.exitFullscreen?.(); }
+
+let w=c.width, h=c.height;
+let ship={x:w/2,y:h-36,w:96,h:16,speed:420};
+let stars=[], comets=[], powerups=[], particles=[];
+let spawnAcc=0, spawnInterval=0.9, score=0, lives=3, paused=false, gameOver=false;
+let spaceDown=false, spaceTime=0, spaceHandled=false;
+function reset(){ stars=[];comets=[];powerups=[];particles=[];score=0;lives=3;spawnAcc=0;paused=false;gameOver=false; ship.x = w/2; }
+reset();
+
+window.addEventListener('keydown', e=>{
+  if(e.key==='ArrowLeft'||e.key==='a') ship.left=true;
+  if(e.key==='ArrowRight'||e.key==='d') ship.right=true;
+  if(e.key===' ') { spaceDown=true; spaceTime=performance.now()/1000; spaceHandled=false; }
+  if(e.key==='r') reset();
+});
+window.addEventListener('keyup', e=>{
+  if(e.key==='ArrowLeft'||e.key==='a') ship.left=false;
+  if(e.key==='ArrowRight'||e.key==='d') ship.right=false;
+  if(e.key===' ') { spaceDown=false; spaceHandled=false; }
+});
+
+function spawn(){
+  if(Math.random() < 0.18) comets.push({x:Math.random()*w, y:-20, r:12 + Math.random()*16, speed: 120 + Math.random()*120});
+  else stars.push({x:Math.random()*w, y:-8, r:6+Math.random()*4, speed: 80+Math.random()*60});
+  if(Math.random() < 0.05) powerups.push({x:Math.random()*(w-60)+30,y:-18,type:Math.random()<0.6?'magnet':'score',ttl:9});
+}
+
+let last=performance.now(), acc=0;
+function loop(){
+  let now=performance.now(), dt=(now-last)/1000; last=now; acc+=dt;
+  if(spaceDown && !spaceHandled && (performance.now()/1000 - spaceTime) >= 0.1){ paused = !paused; spaceHandled=true; document.getElementById('pauseOverlay').style.display = paused?'flex':'none'; }
+  if(!paused && !gameOver){
+    if(ship.left) ship.x -= ship.speed*dt;
+    if(ship.right) ship.x += ship.speed*dt;
+    ship.x = Math.max(10, Math.min(w-10-ship.w, ship.x));
+    spawnAcc += dt;
+    if(spawnAcc >= spawnInterval){ spawnAcc -= spawnInterval; spawn(); }
+    stars.forEach(s=> s.y += s.speed*dt);
+    comets.forEach(cmt => cmt.y += cmt.speed*dt);
+    powerups.forEach(p => p.y += 80*dt);
+    // collisions
+    const shipRect = {x: ship.x, y: ship.y, w: ship.w, h: ship.h};
+    for(let i = stars.length-1; i>=0; i--){
+      let s = stars[i];
+      if(s.y > h+20) { stars.splice(i,1); continue; }
+      if(s.y > ship.y && s.x > ship.x && s.x < ship.x+ship.w){ score++; stars.splice(i,1); }
+    }
+    for(let i=comets.length-1;i>=0;i--){
+      let co=comets[i];
+      if(co.y>h+40){ comets.splice(i,1); continue; }
+      if(co.y > ship.y - 8 && co.x > ship.x && co.x < ship.x + ship.w){
+        comets.splice(i,1); lives--; if(lives<=0){ gameOver=true; break; }
+      }
+    }
+    for(let i=powerups.length-1;i>=0;i--){
+      let p=powerups[i];
+      if(p.y>h+40){ powerups.splice(i,1); continue; }
+      if(p.y > ship.y - 8 && p.x > ship.x && p.x < ship.x + ship.w){
+        if(p.type === 'magnet'){ /* tiny magnet effect: collect nearby stars for 5s */ }
+        else score += 2;
+        powerups.splice(i,1);
+      }
+    }
+  }
+  draw();
+  if(gameOver){ ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,0,w,h); ctx.fillStyle='#fff'; ctx.fillText("Game Over - Score: "+score, w/2-80, h/2); }
+  requestAnimationFrame(loop);
+}
+function draw(){
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()||'#081028';
+  ctx.fillRect(0,0,w,h);
+  // stars
+  for(let s of stars){ ctx.fillStyle = '#ffe77a'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill(); }
+  // comets
+  for(let co of comets){
+    ctx.fillStyle = '#ff8b5a';
+    ctx.beginPath(); ctx.arc(co.x, co.y, co.r, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,140,80,0.18)'; ctx.fillRect(co.x-3*co.r, co.y-3*co.r, co.r*2, co.r);
+  }
+  // powerups
+  for(let p of powerups){ ctx.fillStyle = p.type==='magnet' ? '#8bd3ff' : '#c8ffb5'; ctx.beginPath(); ctx.arc(p.x,p.y,8,0,Math.PI*2); ctx.fill(); }
+  // ship
+  ctx.fillStyle = '#9bd4ff'; ctx.fillRect(ship.x, ship.y, ship.w, ship.h);
+  // hud
+  ctx.fillStyle='#fff'; ctx.font='14px Inter'; ctx.fillText('Score: '+score+'  Lives: '+lives, 12, 20);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Shadow Mirror — GAYMZ</title>
+<style>
+:root{--bg:#0b1220;--fg:#eaf2ff;--card:#081028}.light{--bg:#fff;--fg:#111}
+body{margin:0;font-family:Inter;background:var(--bg);color:var(--fg)}
+.container{padding:30px;display:flex;justify-content:center}
+.card{width:100%;max-width:960px;background:var(--card);padding:18px;border-radius:12px}
+canvas{width:100%;height:420px;border-radius:8px;background:linear-gradient(180deg,#0d1b2a,#08141f)}
+.small{font-size:13px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-weight:700">Shadow Mirror — Game 3</div>
+      <div><button id="theme">☀️</button></div>
+    </div>
+    <canvas id="c" width="920" height="420"></canvas>
+    <div class="small" style="margin-top:8px">Left side: you. Right side: mirrored shadow. Move with arrow keys. Collect lights, avoid traps.</div>
+  </div>
+</div>
+
+<script>
+const c=document.getElementById('c'), ctx=c.getContext('2d'), w=c.width, h=c.height;
+let theme = localStorage.getItem('g_theme')||'dark';
+function apply(){document.documentElement.classList.toggle('light', theme==='light'); document.getElementById('theme').textContent = theme==='light' ? '🌙' : '☀️'; localStorage.setItem('g_theme', theme);} apply();
+document.getElementById('theme').onclick = ()=>{ theme = theme==='light' ? 'dark' : 'light'; apply(); }
+
+let player = {x:120,y:h/2,r:14}, shadow = {x:w-120,y:h/2,r:14};
+let lights = [], traps = [], score=0, gameOver=false;
+function spawn(){ if(Math.random() < 0.5) lights.push({x: Math.random()*(w-240)+120, y: -12, r:7}); else traps.push({x: Math.random()*(w-240)+120, y:-18, r:12}); }
+let last = performance.now(), acc=0;
+window.addEventListener('keydown', e=>{ if(e.key==='ArrowLeft'||e.key==='a') player.x -= 22; if(e.key==='ArrowRight'||e.key==='d') player.x += 22; if(e.key==='ArrowUp'||e.key==='w') player.y -= 22; if(e.key==='ArrowDown'||e.key==='s') player.y += 22; });
+function loop(){
+  let now=performance.now(), dt=(now-last)/1000; last=now; acc+=dt;
+  if(Math.random()<0.02) spawn();
+  // update items
+  lights.forEach(l=> l.y += 80*dt);
+  traps.forEach(t=> t.y += 120*dt);
+  // mirror player's position to shadow (mirror horizontally around center)
+  const centerX = w/2;
+  shadow.x = centerX + (centerX - player.x);
+  shadow.y = player.y;
+  // collisions
+  for(let i=lights.length-1;i>=0;i--){
+    if(Math.hypot(lights[i].x-player.x, lights[i].y-player.y) < lights[i].r + player.r){
+      score++; lights.splice(i,1); continue;
+    }
+    if(Math.hypot(lights[i].x-shadow.x, lights[i].y-shadow.y) < lights[i].r + shadow.r){
+      score++; lights.splice(i,1); continue;
+    }
+    if(lights[i].y > h+20) lights.splice(i,1);
+  }
+  for(let i=traps.length-1;i>=0;i--){
+    if(Math.hypot(traps[i].x-player.x, traps[i].y-player.y) < traps[i].r + player.r){ gameOver=true; }
+    if(Math.hypot(traps[i].x-shadow.x, traps[i].y-shadow.y) < traps[i].r + shadow.r){ gameOver=true; }
+    if(traps[i].y > h+40) traps.splice(i,1);
+  }
+  draw();
+  if(gameOver){ ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,0,w,h); ctx.fillStyle='#fff'; ctx.fillText("Game Over - Score: "+score, w/2-80, h/2);}
+  requestAnimationFrame(loop);
+}
+function draw(){
+  ctx.clearRect(0,0,w,h); ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()||'#0b1220'; ctx.fillRect(0,0,w,h);
+  // dividing mirror line
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.beginPath(); ctx.moveTo(w/2,0); ctx.lineTo(w/2,h); ctx.stroke();
+  // lights
+  for(let l of lights){ ctx.fillStyle='#fff27a'; ctx.beginPath(); ctx.arc(l.x,l.y,l.r,0,Math.PI*2); ctx.fill(); }
+  // traps
+  for(let t of traps){ ctx.fillStyle='#ff7a7a'; ctx.beginPath(); ctx.arc(t.x,t.y,t.r,0,Math.PI*2); ctx.fill(); }
+  // player (left)
+  ctx.fillStyle='#89f'; ctx.beginPath(); ctx.arc(player.x, player.y, player.r,0,Math.PI*2); ctx.fill();
+  // shadow (right)
+  ctx.fillStyle='rgba(100,120,160,0.95)'; ctx.beginPath(); ctx.arc(shadow.x, shadow.y, shadow.r,0,Math.PI*2); ctx.fill();
+  // hud
+  ctx.fillStyle='#fff'; ctx.font='14px Inter'; ctx.fillText('Score: '+score, 12, 20);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
