@@ -1,87 +1,539 @@
 <!doctype html>
 <html>
 <head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="utf-8"/>
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>Tether Twins — GAYMZ</title>
 <style>
-:root{--bg:#eaf6ff;--fg:#0b1b2b;--card:#fff}.light{}
-body{margin:0;font-family:Inter;background:linear-gradient(180deg,#cfeefe,#ffffff);color:#0b1b2b}
-.container{padding:32px;display:flex;justify-content:center}
-.card{width:100%;max-width:980px;background:rgba(255,255,255,0.85);padding:18px;border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,.06)}
-canvas{width:100%;height:420px;border-radius:8px;background:linear-gradient(180deg,#dff6ff,#bfe8ff)}
-.small{font-size:13px}
+:root{
+  --bg:#0b1b2b;
+  --fg:#eaf6ff;
+  --card:#0f172a;
+}
+.light{
+  --bg:#eaf6ff;
+  --fg:#0b1b2b;
+  --card:#ffffff;
+}
+html,body{
+  margin:0;
+  height:100%;
+  font-family:Inter,Arial,system-ui;
+  background:var(--bg);
+  color:var(--fg);
+  overflow:hidden;  /* stop page scroll with arrows/space */
+}
+.wrap{
+  padding:16px;
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.card{
+  width:100%;
+  max-width:980px;
+  background:var(--card);
+  padding:16px;
+  border-radius:12px;
+  box-shadow:0 12px 36px rgba(0,0,0,.35);
+}
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+}
+canvas{
+  width:100%;
+  height:auto;
+  border-radius:8px;
+  background:linear-gradient(180deg,#dff6ff,#bfe8ff);
+}
+.small{
+  font-size:13px;
+}
+
+/* overlay cards */
+.overlay{
+  position:absolute;
+  left:0; right:0; top:0; bottom:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.overlay-inner{
+  background:var(--card);
+  padding:20px;
+  border-radius:12px;
+  text-align:center;
+  box-shadow:0 8px 30px rgba(0,0,0,.5);
+  width:min(500px,90vw);
+}
+
+/* buttons */
+.btn{
+  padding:8px 12px;
+  border-radius:8px;
+  border:0;
+  cursor:pointer;
+  font-size:14px;
+}
+.btn-primary{
+  background:#22c55e;
+  color:#022c22;
+}
+.btn-ghost{
+  background:transparent;
+  border:1px solid rgba(148,163,184,0.7);
+}
+.btn-danger{
+  background:#ef4444;
+  color:#f9fafb;
+}
+
+/* status row */
+.status-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:8px;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+/* mobile controls */
+.controls{
+  display:none;
+  margin-top:10px;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  user-select:none;
+}
+.controls-row{
+  display:flex;
+  gap:6px;
+}
+.ctrl-btn{
+  width:60px;
+  height:50px;
+  border-radius:12px;
+  border:0;
+  font-size:18px;
+  font-weight:600;
+  background:rgba(255,255,255,0.1);
+  color:#e5e7eb;
+}
+.light .ctrl-btn{
+  background:#e5e7eb;
+  color:#0f172a;
+}
+
+@media (max-width: 768px){
+  .controls{display:flex;}
+  .wrap{padding:8px;}
+  .card{padding:12px;}
+}
 </style>
 </head>
 <body>
-<div class="container">
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center">
+<div class="wrap">
+  <div class="card" id="card">
+    <div class="header">
       <div style="font-weight:700">Tether Twins — Game 4</div>
-      <div><button id="theme">☀️</button></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span id="hudText" class="small" style="display:none"></span>
+        <button id="theme" class="btn">☀️</button>
+        <button id="fs" class="btn">F</button>
+      </div>
     </div>
-    <canvas id="c" width="920" height="420"></canvas>
-    <div class="small" style="margin-top:8px">Control the Leader (arrow keys). The Twin swings on an elastic tether. Collect orbs, avoid mines.</div>
+
+    <div style="position:relative">
+      <canvas id="c" width="920" height="420"></canvas>
+
+      <!-- Pause overlay -->
+      <div id="pauseOverlay" class="overlay" style="display:none">
+        <div class="overlay-inner">
+          <h2>Paused</h2>
+          <div style="margin-top:8px">
+            <button id="resume" class="btn btn-primary">Resume</button>
+            <button id="restart" class="btn btn-ghost">Restart</button>
+          </div>
+          <div class="small" style="margin-top:8px">
+            Hold SPACE to pause • R restart • F fullscreen
+          </div>
+        </div>
+      </div>
+
+      <!-- Game over overlay -->
+      <div id="gameOver" class="overlay" style="display:none">
+        <div class="overlay-inner">
+          <h2>Game Over</h2>
+          <div id="final" style="margin:10px 0"></div>
+          <div id="highText" class="small" style="margin-bottom:8px"></div>
+          <div>
+            <button id="replay" class="btn btn-primary">Replay</button>
+            <button id="quit" class="btn btn-danger">Quit</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-row small">
+      <div>
+        Control the Leader (arrow keys / WASD). Twin swings on a tether.
+        Collect yellow orbs, avoid red mines.
+      </div>
+      <div id="levelIndicator"></div>
+    </div>
+
+    <!-- Mobile controls -->
+    <div class="controls" id="mobileControls">
+      <div class="controls-row">
+        <button class="ctrl-btn" data-dir="up">▲</button>
+      </div>
+      <div class="controls-row">
+        <button class="ctrl-btn" data-dir="left">◀</button>
+        <button class="ctrl-btn" data-dir="pause" style="width:80px">⏸</button>
+        <button class="ctrl-btn" data-dir="right">▶</button>
+      </div>
+      <div class="controls-row">
+        <button class="ctrl-btn" data-dir="down">▼</button>
+      </div>
+    </div>
   </div>
 </div>
-<script>
-const c=document.getElementById('c'), ctx=c.getContext('2d'); const w=c.width, h=c.height;
-let leader={x:w/3,y:h/2,vx:0,vy:0,r:18}; let twin={angle:Math.PI/3, angVel:0, rope:160};
-let orbs=[], mines=[], score=0, gameOver=false;
-function spawn(){ if(Math.random()<0.04) orbs.push({x: Math.random()*(w-180)+90, y:-10, r:8}); if(Math.random()<0.02) mines.push({x:Math.random()*(w-180)+90,y:-10,r:10}); }
-window.addEventListener('keydown', e=>{ if(e.key==='ArrowLeft'||e.key==='a') leader.vx=-220; if(e.key==='ArrowRight'||e.key==='d') leader.vx=220; if(e.key==='ArrowUp'||e.key==='w') leader.vy=-200; if(e.key==='ArrowDown'||e.key==='s') leader.vy=200; });
-window.addEventListener('keyup', e=>{ if(['ArrowLeft','a','ArrowRight','d'].includes(e.key)) leader.vx=0; if(['ArrowUp','w','ArrowDown','s'].includes(e.key)) leader.vy=0; });
 
-let last=performance.now();
+<script>
+/* ========== THEME ========== */
+let theme = localStorage.getItem("g_theme") || "dark";
+const themeBtn = document.getElementById("theme");
+function applyTheme(){
+  document.documentElement.classList.toggle("light", theme === "light");
+  themeBtn.textContent = theme === "light" ? "🌙" : "☀️";
+  localStorage.setItem("g_theme", theme);
+}
+applyTheme();
+themeBtn.onclick = () => {
+  theme = theme === "light" ? "dark" : "light";
+  applyTheme();
+};
+
+/* ========== FULLSCREEN ========== */
+const card = document.getElementById("card");
+const fsBtn = document.getElementById("fs");
+function isFS(){ return document.fullscreenElement; }
+function toggleFS(){
+  if (!isFS()) card.requestFullscreen();
+  else document.exitFullscreen();
+}
+fsBtn.onclick = toggleFS;
+
+/* ========== GAME STATE ========== */
+const cEl = document.getElementById("c");
+const ctx = cEl.getContext("2d");
+const w = cEl.width, h = cEl.height;
+
+let leader = { x: w/3, y: h/2, vx:0, vy:0, r:18 };
+let twin = { angle: Math.PI/3, angVel: 0, rope: 160 };
+
+let orbs = [];
+let mines = [];
+
+let score = 0;
+let lives = 3;
+let level = 1;
+
+let spawnTimer = 0;
+let spawnRate = 0.75;        // seconds
+const MIN_SPAWN_RATE = 0.35;
+
+let paused = false;
+let gameOver = false;
+let highScore = Number(localStorage.getItem("tether_high") || "0");
+
+let spaceDown = false, spaceTime = 0, spaceHandled = false;
+
+const hudText = document.getElementById("hudText");
+const levelIndicator = document.getElementById("levelIndicator");
+
+/* ========== HELPERS ========== */
+function resetGame(){
+  leader = { x:w/3, y:h/2, vx:0, vy:0, r:18 };
+  twin = { angle: Math.PI/3, angVel: 0, rope: 160 };
+  orbs = [];
+  mines = [];
+  score = 0;
+  lives = 3;
+  level = 1;
+  spawnTimer = 0;
+  spawnRate = 0.75;
+  paused = false;
+  gameOver = false;
+  spaceDown = spaceHandled = false;
+  document.getElementById("pauseOverlay").style.display = "none";
+  document.getElementById("gameOver").style.display = "none";
+  updateLevelText();
+}
+function updateLevelText(){
+  levelIndicator.textContent = `Score: ${score} • Lives: ${lives} • Level: ${level}`;
+}
+function updateLevel(){
+  level = 1 + Math.floor(score / 10);
+  spawnRate = Math.max(MIN_SPAWN_RATE, 0.75 - (level-1)*0.06);
+  updateLevelText();
+}
+
+/* spawn orbs/mines */
+function spawn(){
+  if (Math.random() < 0.06)
+    orbs.push({x: Math.random()*(w-180)+90, y:-10, r:8, vy:80});
+  if (Math.random() < 0.035)
+    mines.push({x: Math.random()*(w-180)+90, y:-10, r:10, vy:110});
+}
+
+/* ========== INPUT: KEYBOARD ========== */
+window.addEventListener("keydown", e => {
+  const k = e.key;
+
+  if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," ","Spacebar"].includes(k)){
+    e.preventDefault();
+  }
+
+  if (k==="ArrowLeft" || k==="a" || k==="A") leader.vx = -220;
+  if (k==="ArrowRight"|| k==="d" || k==="D") leader.vx = 220;
+  if (k==="ArrowUp"  || k==="w" || k==="W") leader.vy = -200;
+  if (k==="ArrowDown"|| k==="s" || k==="S") leader.vy = 200;
+
+  if (k==="f"||k==="F") toggleFS();
+  if (k==="r"||k==="R") resetGame();
+
+  if (k===" "||k==="Spacebar"){
+    spaceDown = true;
+    spaceTime = performance.now()/1000;
+    spaceHandled = false;
+  }
+});
+window.addEventListener("keyup", e => {
+  const k = e.key;
+  if (["ArrowLeft","a","A","ArrowRight","d","D"].includes(k)) leader.vx = 0;
+  if (["ArrowUp","w","W","ArrowDown","s","S"].includes(k)) leader.vy = 0;
+  if (k===" "||k==="Spacebar"){
+    spaceDown = false;
+    spaceHandled = false;
+  }
+});
+
+/* ========== MOBILE BUTTONS ========== */
+const mobileControls = document.getElementById("mobileControls");
+mobileControls.addEventListener("click", e => {
+  const btn = e.target.closest(".ctrl-btn");
+  if (!btn) return;
+  const dir = btn.getAttribute("data-dir");
+  if (dir==="left"){ leader.vx = -220; leader.vy = 0; }
+  if (dir==="right"){ leader.vx = 220; leader.vy = 0; }
+  if (dir==="up"){ leader.vy = -200; leader.vx = 0; }
+  if (dir==="down"){ leader.vy = 200; leader.vx = 0; }
+  if (dir==="pause"){
+    paused = !paused;
+    document.getElementById("pauseOverlay").style.display = paused ? "flex" : "none";
+  }
+});
+mobileControls.addEventListener("touchend", () => {
+  leader.vx = leader.vy = 0;
+}, {passive:true});
+
+/* ========== TOUCH SWIPE (for quick nudges) ========== */
+let touchStartX = null, touchStartY = null;
+cEl.addEventListener("touchstart", e => {
+  const t = e.touches[0];
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+}, {passive:true});
+cEl.addEventListener("touchend", e => {
+  if (touchStartX === null || touchStartY === null) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStartX;
+  const dy = t.clientY - touchStartY;
+  touchStartX = touchStartY = null;
+
+  if (Math.abs(dx) > Math.abs(dy)){
+    if (dx > 30) leader.x += 30;
+    else if (dx < -30) leader.x -= 30;
+  } else {
+    if (dy > 30) leader.y += 30;
+    else if (dy < -30) leader.y -= 30;
+  }
+}, {passive:true});
+
+/* ========== OVERLAY BUTTONS ========== */
+document.getElementById("resume").onclick = () => {
+  paused = false;
+  document.getElementById("pauseOverlay").style.display="none";
+};
+document.getElementById("restart").onclick = () => resetGame();
+document.getElementById("replay").onclick = () => resetGame();
+document.getElementById("quit").onclick = () => { window.close && window.close(); };
+
+/* ========== GAME LOOP ========== */
+let last = performance.now();
 function loop(){
-  let now=performance.now(), dt=(now-last)/1000; last=now;
-  if(Math.random()<0.02) spawn();
-  // leader physics
-  leader.x += leader.vx*dt; leader.y += leader.vy*dt;
-  leader.x = Math.max(40, Math.min(w-40, leader.x)); leader.y = Math.max(40, Math.min(h-40, leader.y));
-  // twin physics (pendulum anchored to leader)
-  let anchor = {x: leader.x + 60, y: leader.y - 30};
-  // simple pendulum integrator
-  const g = 980;
-  let a = twin.angle; let av = twin.angVel;
-  let accel = - (g / twin.rope) * Math.sin(a) * 0.015;
-  av += accel * dt * 50;
-  av *= 0.995;
-  a += av * dt * 50;
-  twin.angle = a; twin.angVel = av;
-  let tx = anchor.x + Math.sin(a)*twin.rope, ty = anchor.y + Math.cos(a)*twin.rope;
-  // update orbs/mines
-  orbs.forEach(o=> o.y += 80*dt); mines.forEach(m=> m.y += 120*dt);
-  // collisions
-  for(let i=orbs.length-1;i>=0;i--){
-    let o = orbs[i];
-    if(Math.hypot(o.x - leader.x, o.y - leader.y) < o.r + leader.r){ score++; orbs.splice(i,1); continue; }
-    if(Math.hypot(o.x - tx, o.y - ty) < o.r + 12){ score++; orbs.splice(i,1); continue; }
-    if(o.y > h+20) orbs.splice(i,1);
+  const now = performance.now();
+  const dt = (now - last)/1000;
+  last = now;
+
+  // long-press SPACE to pause
+  if (spaceDown && !spaceHandled){
+    if (performance.now()/1000 - spaceTime >= 0.1){
+      paused = !paused;
+      spaceHandled = true;
+      document.getElementById("pauseOverlay").style.display = paused ? "flex" : "none";
+    }
   }
-  for(let i=mines.length-1;i>=0;i--){
-    let m = mines[i];
-    if(Math.hypot(m.x - leader.x, m.y - leader.y) < m.r + leader.r){ gameOver=true; }
-    if(Math.hypot(m.x - tx, m.y - ty) < m.r + 12){ gameOver=true; }
-    if(m.y > h+40) mines.splice(i,1);
+
+  if (!paused && !gameOver){
+    spawnTimer += dt;
+    while (spawnTimer >= spawnRate){
+      spawnTimer -= spawnRate;
+      spawn();
+    }
+
+    // leader physics
+    leader.x += leader.vx * dt;
+    leader.y += leader.vy * dt;
+    leader.x = Math.max(40, Math.min(w-40, leader.x));
+    leader.y = Math.max(40, Math.min(h-40, leader.y));
+
+    // twin pendulum anchored to leader
+    const anchor = { x: leader.x + 60, y: leader.y - 30 };
+    const g = 980;
+    let a = twin.angle;
+    let av = twin.angVel;
+    let accel = - (g / twin.rope) * Math.sin(a) * 0.015;
+    av += accel * dt * 50;
+    av *= 0.995;
+    a += av * dt * 50;
+    twin.angle = a;
+    twin.angVel = av;
+    const tx = anchor.x + Math.sin(a)*twin.rope;
+    const ty = anchor.y + Math.cos(a)*twin.rope;
+
+    // update objects
+    orbs.forEach(o => o.y += o.vy * dt);
+    mines.forEach(m => m.y += m.vy * dt);
+
+    // collisions: orbs
+    for (let i = orbs.length-1; i >= 0; i--){
+      const o = orbs[i];
+      if (Math.hypot(o.x - leader.x, o.y - leader.y) < o.r + leader.r){
+        score++; updateLevel(); orbs.splice(i,1); continue;
+      }
+      if (Math.hypot(o.x - tx, o.y - ty) < o.r + 12){
+        score++; updateLevel(); orbs.splice(i,1); continue;
+      }
+      if (o.y > h+20) orbs.splice(i,1);
+    }
+
+    // collisions: mines
+    for (let i = mines.length-1; i >= 0; i--){
+      const m = mines[i];
+      if (Math.hypot(m.x - leader.x, m.y - leader.y) < m.r + leader.r){
+        lives--; mines.splice(i,1); updateLevel();
+      } else if (Math.hypot(m.x - tx, m.y - ty) < m.r + 12){
+        lives--; mines.splice(i,1); updateLevel();
+      } else if (m.y > h+40){
+        mines.splice(i,1);
+      }
+    }
+
+    if (lives <= 0){
+      gameOver = true;
+    }
+
+    draw(anchor, tx, ty);
+  } else {
+    // still need to draw, anchor & twin pos from current angle
+    const anchor = { x: leader.x + 60, y: leader.y - 30 };
+    const tx = anchor.x + Math.sin(twin.angle)*twin.rope;
+    const ty = anchor.y + Math.cos(twin.angle)*twin.rope;
+    draw(anchor, tx, ty);
   }
-  draw(anchor, tx, ty);
-  if(gameOver){ ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(0,0,w,h); ctx.fillStyle='#fff'; ctx.fillText('Game Over - Score: '+score, w/2-80, h/2); }
+
+  if (gameOver){
+    document.getElementById("gameOver").style.display = "flex";
+    document.getElementById("final").textContent =
+      `Score: ${score} • Level: ${level}`;
+    if (score > highScore){
+      highScore = score;
+      localStorage.setItem("tether_high", String(highScore));
+    }
+    document.getElementById("highText").textContent =
+      `Best score on this device: ${highScore}`;
+  }
+
   requestAnimationFrame(loop);
 }
+
+/* ========== DRAW ========== */
 function draw(anchor, tx, ty){
-  ctx.clearRect(0,0,w,h); ctx.fillStyle='linear-gradient(180deg,#dff6ff,#bfe8ff)'; ctx.fillRect(0,0,w,h);
-  // draw rope
-  ctx.strokeStyle='#e86'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(anchor.x, anchor.y); ctx.lineTo(tx, ty); ctx.stroke();
-  // draw anchor leader
-  ctx.fillStyle='#2b6cff'; ctx.beginPath(); ctx.arc(leader.x, leader.y, leader.r,0,Math.PI*2); ctx.fill();
+  // background gradient
+  const grad = ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,"#dff6ff");
+  grad.addColorStop(1,"#bfe8ff");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,w,h);
+
+  // rope
+  ctx.strokeStyle = "#f97316";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(anchor.x, anchor.y);
+  ctx.lineTo(tx, ty);
+  ctx.stroke();
+
+  // leader
+  ctx.fillStyle = "#2563eb";
+  ctx.beginPath();
+  ctx.arc(leader.x, leader.y, leader.r, 0, Math.PI*2);
+  ctx.fill();
+
   // twin
-  ctx.fillStyle='#26d07e'; ctx.beginPath(); ctx.arc(tx, ty, 12,0,Math.PI*2); ctx.fill();
-  // orbs & mines
-  for(let o of orbs){ ctx.fillStyle='#ffd36b'; ctx.beginPath(); ctx.arc(o.x,o.y,o.r,0,Math.PI*2); ctx.fill(); }
-  for(let m of mines){ ctx.fillStyle='#ff7a7a'; ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#fff'; ctx.fillRect(m.x-2,m.y-2,4,4); }
-  // hud
-  ctx.fillStyle='#000'; ctx.font='14px Inter'; ctx.fillText('Score: '+score, 12, 20);
+  ctx.fillStyle = "#22c55e";
+  ctx.beginPath();
+  ctx.arc(tx, ty, 12, 0, Math.PI*2);
+  ctx.fill();
+
+  // orbs
+  for (const o of orbs){
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    ctx.arc(o.x,o.y,o.r,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  // mines
+  for (const m of mines){
+    ctx.fillStyle = "#ef4444";
+    ctx.beginPath();
+    ctx.arc(m.x,m.y,m.r,0,Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(m.x-2,m.y-2,4,4);
+  }
+
+  // HUD
+  ctx.fillStyle = "#0b1b2b";
+  ctx.font = "14px Inter";
+  ctx.fillText(`Score: ${score}   Lives: ${lives}   Level: ${level}`, 12, 20);
+
+  hudText.style.display = "inline";
+  hudText.textContent = `Spawn: ${spawnRate.toFixed(2)}s`;
 }
+
+/* start */
+updateLevelText();
 requestAnimationFrame(loop);
 </script>
 </body>

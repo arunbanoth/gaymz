@@ -1,84 +1,476 @@
 <!doctype html>
 <html>
 <head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="utf-8"/>
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>Shadow Mirror — GAYMZ</title>
+
 <style>
-:root{--bg:#0b1220;--fg:#eaf2ff;--card:#081028}.light{--bg:#fff;--fg:#111}
-body{margin:0;font-family:Inter;background:var(--bg);color:var(--fg)}
-.container{padding:30px;display:flex;justify-content:center}
-.card{width:100%;max-width:960px;background:var(--card);padding:18px;border-radius:12px}
-canvas{width:100%;height:420px;border-radius:8px;background:linear-gradient(180deg,#0d1b2a,#08141f)}
-.small{font-size:13px}
+:root {
+  --bg:#0b1220;
+  --fg:#eaf2ff;
+  --card:#081028;
+}
+.light {
+  --bg:#ffffff;
+  --fg:#0b1220;
+  --card:#e5e7eb;
+}
+html, body {
+  margin:0;
+  height:100%;
+  overflow:hidden;               /* Stop scroll on arrow keys */
+  font-family:Inter, Arial;
+  background:var(--bg);
+  color:var(--fg);
+}
+.wrap {
+  padding:16px;
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.card {
+  width:100%;
+  max-width:960px;
+  background:var(--card);
+  padding:16px;
+  border-radius:12px;
+  box-shadow:0 12px 36px rgba(0,0,0,.45);
+}
+.header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+}
+canvas {
+  width:100%;
+  height:auto;
+  border-radius:8px;
+  background:linear-gradient(180deg,#0d1b2a,#08141f);
+}
+
+/* overlay cards */
+.overlay {
+  position:absolute;
+  left:0; right:0; top:0; bottom:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.card-inner {
+  background:var(--card);
+  padding:20px;
+  border-radius:12px;
+  text-align:center;
+  box-shadow:0 8px 30px rgba(0,0,0,.5);
+  width:min(500px, 90vw);
+}
+
+/* buttons */
+.btn {
+  padding:8px 12px;
+  border-radius:8px;
+  border:0;
+  font-size:14px;
+  cursor:pointer;
+}
+.btn-primary {
+  background:#22c55e;
+  color:#022c22;
+}
+.btn-ghost {
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.3);
+}
+.btn-danger {
+  background:#ef4444;
+  color:white;
+}
+
+/* mobile controls */
+.controls {
+  display:none;
+  margin-top:12px;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+}
+.controls-row {
+  display:flex;
+  gap:6px;
+}
+.ctrl-btn {
+  width:60px; height:50px;
+  border-radius:12px;
+  border:0;
+  font-size:18px;
+  background:rgba(255,255,255,0.1);
+  color:white;
+}
+.light .ctrl-btn { background:#e5e7eb; color:black; }
+
+@media (max-width: 768px){
+  .controls { display:flex; }
+}
 </style>
 </head>
+
 <body>
-<div class="container">
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="font-weight:700">Shadow Mirror — Game 3</div>
-      <div><button id="theme">☀️</button></div>
-    </div>
-    <canvas id="c" width="920" height="420"></canvas>
-    <div class="small" style="margin-top:8px">Left side: you. Right side: mirrored shadow. Move with arrow keys. Collect lights, avoid traps.</div>
+<div class="wrap">
+<div class="card" id="card">
+
+<!--------- HEADER --------->
+<div class="header">
+  <div style="font-weight:700">Shadow Mirror — Game 3</div>
+  <div style="display:flex;gap:6px">
+    <span id="hudText" class="small" style="display:none"></span>
+    <button id="theme" class="btn">☀️</button>
+    <button id="fs" class="btn">F</button>
   </div>
 </div>
 
-<script>
-const c=document.getElementById('c'), ctx=c.getContext('2d'), w=c.width, h=c.height;
-let theme = localStorage.getItem('g_theme')||'dark';
-function apply(){document.documentElement.classList.toggle('light', theme==='light'); document.getElementById('theme').textContent = theme==='light' ? '🌙' : '☀️'; localStorage.setItem('g_theme', theme);} apply();
-document.getElementById('theme').onclick = ()=>{ theme = theme==='light' ? 'dark' : 'light'; apply(); }
+<!--------- GAME CANVAS --------->
+<div style="position:relative">
+  <canvas id="c" width="920" height="420"></canvas>
 
-let player = {x:120,y:h/2,r:14}, shadow = {x:w-120,y:h/2,r:14};
-let lights = [], traps = [], score=0, gameOver=false;
-function spawn(){ if(Math.random() < 0.5) lights.push({x: Math.random()*(w-240)+120, y: -12, r:7}); else traps.push({x: Math.random()*(w-240)+120, y:-18, r:12}); }
-let last = performance.now(), acc=0;
-window.addEventListener('keydown', e=>{ if(e.key==='ArrowLeft'||e.key==='a') player.x -= 22; if(e.key==='ArrowRight'||e.key==='d') player.x += 22; if(e.key==='ArrowUp'||e.key==='w') player.y -= 22; if(e.key==='ArrowDown'||e.key==='s') player.y += 22; });
+  <!-- Pause Overlay -->
+  <div id="pauseScreen" class="overlay" style="display:none">
+    <div class="card-inner">
+      <h2>Paused</h2>
+      <div style="margin-top:10px">
+        <button id="resume" class="btn btn-primary">Resume</button>
+        <button id="restart" class="btn btn-ghost">Restart</button>
+      </div>
+      <div class="small" style="margin-top:8px">
+        SPACE hold to pause • R restart • F fullscreen
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over Overlay -->
+  <div id="gameOver" class="overlay" style="display:none">
+    <div class="card-inner">
+      <h2>Game Over</h2>
+      <div id="final" style="margin:10px 0"></div>
+      <div id="highText" class="small" style="margin-bottom:8px"></div>
+      <div>
+        <button id="replay" class="btn btn-primary">Replay</button>
+        <button id="quit" class="btn btn-danger">Quit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--------- MOBILE CONTROLS --------->
+<div class="controls" id="mobileControls">
+  <div class="controls-row">
+    <button class="ctrl-btn" data-dir="up">▲</button>
+  </div>
+  <div class="controls-row">
+    <button class="ctrl-btn" data-dir="left">◀</button>
+    <button class="ctrl-btn" data-dir="pause" style="width:80px">⏸</button>
+    <button class="ctrl-btn" data-dir="right">▶</button>
+  </div>
+  <div class="controls-row">
+    <button class="ctrl-btn" data-dir="down">▼</button>
+  </div>
+</div>
+
+<div class="small" style="margin-top:8px">
+  You control left orb. Shadow on right mirrors you.  
+  Collect yellow lights, avoid red traps.
+</div>
+
+</div>
+</div>
+
+<script>
+/* ===================== THEME ========================= */
+let theme = localStorage.getItem("g_theme") || "dark";
+const themeBtn = document.getElementById("theme");
+function applyTheme(){
+  document.documentElement.classList.toggle("light", theme==="light");
+  themeBtn.textContent = theme==="light" ? "🌙" : "☀️";
+  localStorage.setItem("g_theme", theme);
+}
+applyTheme();
+themeBtn.onclick = ()=>{ theme = theme==="light" ? "dark" : "light"; applyTheme(); };
+
+
+/* ===================== FULLSCREEN ===================== */
+const card = document.getElementById("card");
+const fsBtn = document.getElementById("fs");
+
+function isFS(){
+  return document.fullscreenElement;
+}
+function toggleFS(){
+  if (!isFS()) card.requestFullscreen();
+  else document.exitFullscreen();
+}
+fsBtn.onclick = toggleFS;
+
+
+/* ===================== GAME SETUP ===================== */
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+const w = c.width, h = c.height;
+
+let player = {x:150,y:h/2,r:14,speed:250};
+let shadow = {x:w-150,y:h/2,r:14};
+
+let lights = [];
+let traps = [];
+
+let lives = 3;
+let score = 0;
+let level = 1;
+let spawnTimer = 0;
+let spawnRate = 0.8;
+let gameOver = false;
+let paused = false;
+
+/* pause system */
+let spaceDown=false, spaceTime=0, spaceHandled=false;
+
+let highScore = Number(localStorage.getItem("shadow_high") || "0");
+
+function reset(){
+  lights = [];
+  traps = [];
+  lives = 3;
+  score = 0;
+  level = 1;
+  spawnRate = 0.8;
+  player.x = 150; player.y=h/2;
+  gameOver = false;
+  paused = false;
+  document.getElementById("pauseScreen").style.display="none";
+  document.getElementById("gameOver").style.display="none";
+}
+
+/* ===================== INPUT ===================== */
+window.addEventListener("keydown",e=>{
+  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," ","Spacebar"].includes(e.key)) e.preventDefault();
+
+  if(e.key==="ArrowUp"||e.key==="w") player.y -= 30;
+  if(e.key==="ArrowDown"||e.key==="s") player.y += 30;
+  if(e.key==="ArrowLeft"||e.key==="a") player.x -= 30;
+  if(e.key==="ArrowRight"||e.key==="d") player.x += 30;
+
+  if(e.key==="f"||e.key==="F") toggleFS();
+  if(e.key==="r") reset();
+
+  if(e.key===" "){
+    spaceDown = true;
+    spaceTime = performance.now()/1000;
+    spaceHandled=false;
+  }
+});
+window.addEventListener("keyup",e=>{
+  if(e.key===" ") { spaceDown=false; spaceHandled=false; }
+});
+
+/* ===================== MOBILE BUTTONS ===================== */
+document.getElementById("mobileControls").addEventListener("click",e=>{
+  const b = e.target.closest(".ctrl-btn");
+  if(!b) return;
+  const d = b.getAttribute("data-dir");
+  if(d==="up") player.y -= 30;
+  if(d==="down") player.y += 30;
+  if(d==="left") player.x -= 30;
+  if(d==="right") player.x += 30;
+  if(d==="pause"){
+    paused=!paused;
+    document.getElementById("pauseScreen").style.display = paused?"flex":"none";
+  }
+});
+
+/* ===================== TOUCH SWIPE ===================== */
+let tX=null,tY=null;
+c.addEventListener("touchstart",e=>{
+  let t=e.touches[0];
+  tX=t.clientX; tY=t.clientY;
+},{passive:true});
+c.addEventListener("touchend",e=>{
+  if(!tX||!tY) return;
+  let t=e.changedTouches[0];
+  let dx=t.clientX-tX, dy=t.clientY-tY;
+  if(Math.abs(dx) > Math.abs(dy)){
+    if(dx>30) player.x+=30;
+    else if(dx<-30) player.x-=30;
+  } else {
+    if(dy>30) player.y+=30;
+    else if(dy<-30) player.y-=30;
+  }
+  tX=null; tY=null;
+},{passive:true});
+
+/* ===================== GAME LOOP ===================== */
+function spawn(){
+  if(Math.random()<0.55)
+    lights.push({x:Math.random()*(w-260)+130,y:-10,r:8,speed:90});
+  else
+    traps.push({x:Math.random()*(w-260)+130,y:-16,r:13,speed:130});
+}
+
+function updateLevel(){
+  level = 1 + Math.floor(score/10);
+  spawnRate = Math.max(0.40, 0.8 - (level-1)*0.06);
+}
+
+let last = performance.now();
 function loop(){
-  let now=performance.now(), dt=(now-last)/1000; last=now; acc+=dt;
-  if(Math.random()<0.02) spawn();
-  // update items
-  lights.forEach(l=> l.y += 80*dt);
-  traps.forEach(t=> t.y += 120*dt);
-  // mirror player's position to shadow (mirror horizontally around center)
-  const centerX = w/2;
-  shadow.x = centerX + (centerX - player.x);
-  shadow.y = player.y;
-  // collisions
-  for(let i=lights.length-1;i>=0;i--){
-    if(Math.hypot(lights[i].x-player.x, lights[i].y-player.y) < lights[i].r + player.r){
-      score++; lights.splice(i,1); continue;
+  let now = performance.now();
+  let dt = (now-last)/1000;
+  last = now;
+
+  /* long press SPACE to toggle pause */
+  if(spaceDown && !spaceHandled){
+    if(performance.now()/1000 - spaceTime >= .1){
+      paused = !paused;
+      spaceHandled = true;
+      document.getElementById("pauseScreen").style.display = paused?"flex":"none";
     }
-    if(Math.hypot(lights[i].x-shadow.x, lights[i].y-shadow.y) < lights[i].r + shadow.r){
-      score++; lights.splice(i,1); continue;
+  }
+
+  if(!paused && !gameOver){
+    /* wrap movement */
+    player.x = Math.max(player.r, Math.min(w/2-player.r-20, player.x));
+    player.y = Math.max(player.r, Math.min(h-player.r, player.y));
+
+    /* shadow is mirrored */
+    let mid = w/2;
+    shadow.x = mid + (mid - player.x);
+    shadow.y = player.y;
+
+    /* spawning */
+    spawnTimer += dt;
+    if(spawnTimer > spawnRate){
+      spawnTimer = 0;
+      spawn();
     }
-    if(lights[i].y > h+20) lights.splice(i,1);
+
+    /* update lights/traps */
+    lights.forEach(l=>l.y+=l.speed*dt);
+    traps.forEach(t=>t.y+=t.speed*dt);
+
+    /* collisions */
+    for(let i=lights.length-1;i>=0;i--){
+      let L=lights[i];
+      if(Math.hypot(L.x-player.x, L.y-player.y) < L.r+player.r){
+        score++; updateLevel(); lights.splice(i,1);
+        continue;
+      }
+      if(Math.hypot(L.x-shadow.x, L.y-shadow.y) < L.r+shadow.r){
+        score++; updateLevel(); lights.splice(i,1);
+        continue;
+      }
+      if(L.y>h+30) lights.splice(i,1);
+    }
+
+    for(let i=traps.length-1;i>=0;i--){
+      let T=traps[i];
+      if(Math.hypot(T.x-player.x, T.y-player.y) < T.r+player.r){
+        lives--; traps.splice(i,1);
+        updateLevel();
+      }
+      else if(Math.hypot(T.x-shadow.x, T.y-shadow.y) < T.r+shadow.r){
+        lives--; traps.splice(i,1);
+        updateLevel();
+      }
+      else if(T.y>h+40) traps.splice(i,1);
+    }
+
+    if(lives<=0) gameOver=true;
   }
-  for(let i=traps.length-1;i>=0;i--){
-    if(Math.hypot(traps[i].x-player.x, traps[i].y-player.y) < traps[i].r + player.r){ gameOver=true; }
-    if(Math.hypot(traps[i].x-shadow.x, traps[i].y-shadow.y) < traps[i].r + shadow.r){ gameOver=true; }
-    if(traps[i].y > h+40) traps.splice(i,1);
-  }
+
   draw();
-  if(gameOver){ ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,0,w,h); ctx.fillStyle='#fff'; ctx.fillText("Game Over - Score: "+score, w/2-80, h/2);}
+
+  if(gameOver){
+    document.getElementById("gameOver").style.display="flex";
+    document.getElementById("final").textContent = `Score: ${score} • Level: ${level}`;
+    if(score > highScore){
+      highScore = score;
+      localStorage.setItem("shadow_high", String(highScore));
+    }
+    document.getElementById("highText").textContent = `Best score: ${highScore}`;
+  }
+
   requestAnimationFrame(loop);
 }
+
+/* ===================== DRAW ===================== */
 function draw(){
-  ctx.clearRect(0,0,w,h); ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()||'#0b1220'; ctx.fillRect(0,0,w,h);
-  // dividing mirror line
-  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.beginPath(); ctx.moveTo(w/2,0); ctx.lineTo(w/2,h); ctx.stroke();
-  // lights
-  for(let l of lights){ ctx.fillStyle='#fff27a'; ctx.beginPath(); ctx.arc(l.x,l.y,l.r,0,Math.PI*2); ctx.fill(); }
-  // traps
-  for(let t of traps){ ctx.fillStyle='#ff7a7a'; ctx.beginPath(); ctx.arc(t.x,t.y,t.r,0,Math.PI*2); ctx.fill(); }
-  // player (left)
-  ctx.fillStyle='#89f'; ctx.beginPath(); ctx.arc(player.x, player.y, player.r,0,Math.PI*2); ctx.fill();
-  // shadow (right)
-  ctx.fillStyle='rgba(100,120,160,0.95)'; ctx.beginPath(); ctx.arc(shadow.x, shadow.y, shadow.r,0,Math.PI*2); ctx.fill();
-  // hud
-  ctx.fillStyle='#fff'; ctx.font='14px Inter'; ctx.fillText('Score: '+score, 12, 20);
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle=getComputedStyle(document.documentElement)
+               .getPropertyValue("--bg").trim() || "#0b1220";
+  ctx.fillRect(0,0,w,h);
+
+  /* center dividing line */
+  // center mirror panel
+const mirrorW = 26;                 // width of the mirror
+const mirrorX = w / 2 - mirrorW/2;  // center it
+const mirrorY = 30;
+const mirrorH = h - 60;
+
+// mirror glass
+ctx.fillStyle = "rgba(148,163,184,0.22)";
+ctx.fillRect(mirrorX, mirrorY, mirrorW, mirrorH);
+
+// mirror frame
+ctx.strokeStyle = "rgba(226,232,240,0.75)";
+ctx.lineWidth = 2;
+ctx.strokeRect(mirrorX, mirrorY, mirrorW, mirrorH);
+
+// small shiny streak on the glass
+ctx.strokeStyle = "rgba(255,255,255,0.35)";
+ctx.lineWidth = 1;
+ctx.beginPath();
+ctx.moveTo(mirrorX + 4, mirrorY + 8);
+ctx.lineTo(mirrorX + mirrorW - 4, mirrorY + 40);
+ctx.stroke();
+
+
+  /* lights */
+  for(const l of lights){
+    ctx.fillStyle="#ffe772";
+    ctx.beginPath(); ctx.arc(l.x,l.y,l.r,0,Math.PI*2); ctx.fill();
+  }
+  /* traps */
+  for(const t of traps){
+    ctx.fillStyle="#ff6b6b";
+    ctx.beginPath(); ctx.arc(t.x,t.y,t.r,0,Math.PI*2); ctx.fill();
+  }
+
+  /* player */
+  ctx.fillStyle="#7aa8ff";
+  ctx.beginPath(); ctx.arc(player.x,player.y,player.r,0,Math.PI*2); ctx.fill();
+
+  /* shadow */
+  ctx.fillStyle="rgba(160,170,200,0.9)";
+  ctx.beginPath(); ctx.arc(shadow.x,shadow.y,shadow.r,0,Math.PI*2); ctx.fill();
+
+  /* HUD */
+  ctx.fillStyle="#fff";
+  ctx.font="15px Inter";
+  ctx.fillText(`Score: ${score}   Lives: ${lives}   Level: ${level}`, 12,20);
+
+  hudText.style.display="inline";
+  hudText.textContent = `Spawn: ${spawnRate.toFixed(2)}s`;
 }
+
+/* buttons */
+document.getElementById("resume").onclick=()=>{paused=false;document.getElementById("pauseScreen").style.display="none";}
+document.getElementById("restart").onclick=()=>reset();
+document.getElementById("replay").onclick=()=>reset();
+document.getElementById("quit").onclick=()=>window.close?.();
+
+/* start */
 requestAnimationFrame(loop);
 </script>
 </body>

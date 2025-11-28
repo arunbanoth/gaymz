@@ -1,85 +1,452 @@
 <!doctype html>
 <html>
 <head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="utf-8"/>
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>Blaster Dash — GAYMZ</title>
+
 <style>
-body{margin:0;font-family:Inter;background:#07101b;color:#fff}
-.container{padding:26px;display:flex;justify-content:center}
-.card{width:100%;max-width:980px;padding:16px;border-radius:12px}
-canvas{width:100%;height:420px;border-radius:8px;background:linear-gradient(180deg,#02102a,#021022)}
-.small{font-size:13px}
+:root{
+  --bg:#07101b;
+  --fg:#e8f4ff;
+  --card:#0b1220;
+}
+.light{
+  --bg:#f8fafc;
+  --fg:#0b1220;
+  --card:#ffffff;
+}
+html,body{
+  margin:0;
+  height:100%;
+  font-family:Inter,Arial;
+  background:var(--bg);
+  color:var(--fg);
+  overflow:hidden; /* stop scroll */
+}
+.wrap{
+  padding:16px;
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.card{
+  width:100%;
+  max-width:980px;
+  background:var(--card);
+  padding:16px;
+  border-radius:12px;
+  box-shadow:0 12px 36px rgba(0,0,0,.45);
+}
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+}
+canvas{
+  width:100%;
+  height:auto;
+  background:linear-gradient(180deg,#031024,#020d1c);
+  border-radius:8px;
+}
+
+/* overlays */
+.overlay{
+  position:absolute;
+  left:0;right:0;top:0;bottom:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.overlay-inner{
+  background:var(--card);
+  padding:20px;
+  border-radius:12px;
+  text-align:center;
+  box-shadow:0 10px 30px rgba(0,0,0,.5);
+  width:min(500px,90vw);
+}
+
+/* buttons */
+.btn{
+  padding:8px 14px;
+  border-radius:8px;
+  border:0;
+  cursor:pointer;
+  font-size:14px;
+}
+.btn-primary{
+  background:#22c55e;
+  color:#022c22;
+}
+.btn-ghost{
+  background:transparent;
+  border:1px solid rgba(255,255,255,.3);
+}
+.btn-danger{
+  background:#ef4444;
+  color:white;
+}
+
+/* mobile controls */
+.controls{
+  display:none;
+  margin-top:12px;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+}
+.controls-row{
+  display:flex;
+  gap:6px;
+}
+.ctrl-btn{
+  width:60px;height:50px;
+  border-radius:12px;
+  background:rgba(255,255,255,.1);
+  border:0;
+  color:white;
+  font-size:18px;
+}
+.light .ctrl-btn{
+  background:#e2e8f0;
+  color:#1e293b;
+}
+
+@media (max-width:768px){
+  .controls{display:flex;}
+  .wrap{padding:8px;}
+  .card{padding:12px;}
+}
 </style>
 </head>
+
 <body>
-<div class="container">
-  <div class="card">
-    <div style="display:flex;justify-content:space-between">
+<div class="wrap">
+  <div class="card" id="card">
+
+    <!-- HEADER -->
+    <div class="header">
       <div style="font-weight:700">Blaster Dash — Game 5</div>
-      <div>
-        <button id="theme">☀️</button>
+      <div style="display:flex;gap:6px">
+        <span id="hud" class="small" style="display:none"></span>
+        <button id="theme" class="btn">☀️</button>
+        <button id="fs" class="btn">F</button>
       </div>
     </div>
-    <canvas id="c" width="920" height="420"></canvas>
-    <div class="small" style="margin-top:8px">Arrow keys to move, SPACE to shoot, SHIFT to dash. Hold SPACE for pause.</div>
+
+    <!-- CANVAS WRAP -->
+    <div style="position:relative">
+      <canvas id="c" width="920" height="420"></canvas>
+
+      <!-- Pause -->
+      <div id="pauseOverlay" class="overlay" style="display:none">
+        <div class="overlay-inner">
+          <h2>Paused</h2>
+          <div style="margin-top:8px">
+            <button class="btn btn-primary" id="resume">Resume</button>
+            <button class="btn btn-ghost" id="restart">Restart</button>
+          </div>
+          <div class="small" style="margin-top:8px">
+            Hold SPACE to toggle pause — R restart — F fullscreen
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Over -->
+      <div id="gameOver" class="overlay" style="display:none">
+        <div class="overlay-inner">
+          <h2>Game Over</h2>
+          <div id="final" style="margin:10px 0"></div>
+          <div id="highText" class="small" style="margin-bottom:8px"></div>
+          <div>
+            <button class="btn btn-primary" id="replay">Replay</button>
+            <button class="btn btn-danger" id="quit">Quit</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOBILE CONTROLS -->
+    <div class="controls" id="mobileControls">
+      <div class="controls-row">
+        <button class="ctrl-btn" data-act="shoot">🔫</button>
+        <button class="ctrl-btn" data-act="pause">⏸</button>
+      </div>
+      <div class="controls-row">
+        <button class="ctrl-btn" data-act="left">◀</button>
+        <button class="ctrl-btn" data-act="right">▶</button>
+      </div>
+    </div>
+
+    <div class="small" style="margin-top:8px">
+      Controls: Arrow keys / A-D to move • SPACE shoot • SHIFT dash • Hold SPACE to pause
+    </div>
   </div>
 </div>
+
+
 <script>
-const c=document.getElementById('c'), ctx=c.getContext('2d'), w=c.width, h=c.height;
-let px=w/2, py=h-80, pvelx=0, speed=240, bullets=[], drones=[], score=0, lives=3;
-let spaceDown=false, spaceTime=0, spaceHandled=false, paused=false, gameOver=false;
-window.addEventListener('keydown', e=>{
-  if(e.key==='ArrowLeft'||e.key==='a') pvelx=-1;
-  if(e.key==='ArrowRight'||e.key==='d') pvelx=1;
-  if(e.key===' ') { spaceDown=true; if(!spaceHandled && !paused){ shoot(); } spaceTime=performance.now()/1000; }
-  if(e.key==='Shift') speed = 420;
+/* THEME */
+let theme = localStorage.getItem("g_theme") || "dark";
+const themeBtn = document.getElementById("theme");
+function applyTheme(){
+  document.documentElement.classList.toggle("light", theme==="light");
+  themeBtn.textContent = theme==="light" ? "🌙" : "☀️";
+  localStorage.setItem("g_theme", theme);
+}
+applyTheme();
+themeBtn.onclick = ()=>{theme=theme==="light"?"dark":"light";applyTheme();};
+
+/* FULLSCREEN */
+const card = document.getElementById("card");
+function toggleFS(){
+  if (!document.fullscreenElement) card.requestFullscreen();
+  else document.exitFullscreen();
+}
+document.getElementById("fs").onclick = toggleFS;
+
+/* CANVAS + GAME VARS */
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+const w = c.width, h = c.height;
+
+let px, py, vx;
+let bullets, drones;
+let score, lives, level;
+let spawnTimer, spawnRate;
+let dash, dashCD;
+
+let paused = false, gameOver = false;
+let spaceDown=false, spaceTime=0, spaceHandled=false;
+let highScore = Number(localStorage.getItem("blaster_high")||"0");
+
+/* RESET GAME */
+function resetGame(){
+  px = w/2; py = h-80;
+  vx = 0;
+  bullets = [];
+  drones = [];
+  score = 0;
+  lives = 3;
+  level = 1;
+  spawnTimer = 0;
+  spawnRate = 0.9;
+  dash = false;
+  dashCD = 0;
+  paused = false;
+  gameOver = false;
+  document.getElementById("pauseOverlay").style.display="none";
+  document.getElementById("gameOver").style.display="none";
+}
+resetGame();
+
+/* SPAWN DRONE */
+function spawnDrone(){
+  drones.push({
+    x: Math.random()*(w-80)+40,
+    y: -20,
+    r: 14,
+    vx: (Math.random()*2-1)*60,
+    vy: 70 + Math.random()*120
+  });
+}
+
+/* SHOOT */
+function shoot(){
+  bullets.push({x:px,y:py-22,vy:-520,ttl:1.4});
+}
+
+/* KEYBOARD */
+window.addEventListener("keydown", e=>{
+  const k=e.key;
+  if(["ArrowLeft","ArrowRight"," ","Shift"].includes(k)) e.preventDefault();
+
+  if(k==="ArrowLeft"||k==="a") vx=-1;
+  if(k==="ArrowRight"||k==="d") vx=1;
+
+  if(k==="Shift" && dashCD<=0){
+    dash=true;
+    dashCD=1.1;
+  }
+
+  if(k===" "){
+    if(!spaceHandled && !paused) shoot();
+    spaceDown = true;
+    spaceTime = performance.now()/1000;
+  }
+
+  if(k==="r") resetGame();
+  if(k==="f") toggleFS();
 });
-window.addEventListener('keyup', e=>{
-  if(['ArrowLeft','a','ArrowRight','d'].includes(e.key)) pvelx=0;
-  if(e.key===' ') { spaceDown=false; spaceHandled=false; }
-  if(e.key==='Shift') speed=240;
-  if(e.key==='r') reset();
+
+window.addEventListener("keyup", e=>{
+  if(e.key==="ArrowLeft"||e.key==="a"||e.key==="ArrowRight"||e.key==="d") vx=0;
+  if(e.key===" ") {spaceDown=false;spaceHandled=false;}
 });
-function shoot(){ bullets.push({x:px,y:py-18,vx:0,vy:-520,ttl:1.6}); }
-function spawnDrone(){ drones.push({x:Math.random()*(w-60)+30,y:-20, r:12, vx:(Math.random()-0.5)*80, vy:50 + Math.random()*120}); }
-let spawnAcc=0, spawnInterval=0.9, last=performance.now();
-function reset(){ bullets=[]; drones=[]; score=0; lives=3; gameOver=false; paused=false; px=w/2; }
-reset();
+
+/* MOBILE BUTTONS */
+document.getElementById("mobileControls").onclick = e=>{
+  const b = e.target.closest(".ctrl-btn");
+  if(!b) return;
+  const act=b.getAttribute("data-act");
+  if(act==="left"){ px -= 30; }
+  if(act==="right"){ px += 30; }
+  if(act==="shoot") shoot();
+  if(act==="pause"){
+    paused=!paused;
+    document.getElementById("pauseOverlay").style.display=paused?"flex":"none";
+  }
+};
+
+/* OVERLAY BUTTONS */
+document.getElementById("resume").onclick=()=>{
+  paused=false;
+  document.getElementById("pauseOverlay").style.display="none";
+};
+document.getElementById("restart").onclick=resetGame;
+document.getElementById("replay").onclick=resetGame;
+document.getElementById("quit").onclick=()=>{window.close?.();};
+
+/* LOOP */
+let last = performance.now();
 function loop(){
-  let now=performance.now(), dt=(now-last)/1000; last=now;
-  if(spaceDown && !spaceHandled && (performance.now()/1000 - spaceTime) > 0.1){ paused = !paused; spaceHandled=true; }
-  if(!paused && !gameOver){
-    px += pvelx * speed * dt; px = Math.max(20, Math.min(w-20, px));
-    bullets.forEach(b=> { b.x += b.vx*dt; b.y += b.vy*dt; b.ttl -= dt; });
-    bullets = bullets.filter(b=> b.ttl>0 && b.y > -20);
-    spawnAcc += dt; if(spawnAcc >= spawnInterval){ spawnAcc -= spawnInterval; spawnDrone(); }
-    drones.forEach(d => { d.x += d.vx*dt; d.y += d.vy*dt; d.vy += 30*dt; });
-    // collisions
-    for(let i=drones.length-1;i>=0;i--){
-      const d=drones[i];
-      if(d.y > h+40){ drones.splice(i,1); continue;}
-      // hit by bullet?
-      for(let j=bullets.length-1;j>=0;j--){
-        if(Math.hypot(bullets[j].x - d.x, bullets[j].y - d.y) < 12){
-          bullets.splice(j,1); drones.splice(i,1); score+=1; break;
-        }
-      }
-      // hit player?
-      if(Math.hypot(px - d.x, py - d.y) < 20){ drones.splice(i,1); lives--; if(lives<=0){ gameOver=true; } }
+  const now = performance.now();
+  const dt = (now-last)/1000;
+  last=now;
+
+  /* Long hold SPACE to pause */
+  if(spaceDown && !spaceHandled){
+    if(performance.now()/1000 - spaceTime >= 0.1){
+      paused=!paused;
+      spaceHandled=true;
+      document.getElementById("pauseOverlay").style.display=paused?"flex":"none";
     }
   }
+
+  if(!paused && !gameOver){
+    /* LEVEL SCALING */
+    level = 1 + Math.floor(score / 10);
+    spawnRate = Math.max(0.35, 0.9 - (level-1)*0.05);
+
+    /* PLAYER MOVE */
+    let actualSpeed = dash ? 450 : 260;
+    px += vx * actualSpeed * dt;
+    px = Math.max(24, Math.min(w-24, px));
+
+    if(dash){
+      dash=false;
+    }
+    dashCD -= dt;
+
+    /* BULLETS */
+    bullets.forEach(b=>{
+      b.y += b.vy * dt;
+      b.ttl -= dt;
+    });
+    bullets = bullets.filter(b => b.y>-30 && b.ttl>0);
+
+    /* SPAWN DRONES */
+    spawnTimer += dt;
+    if(spawnTimer>=spawnRate){
+      spawnTimer=0;
+      spawnDrone();
+    }
+
+    /* DRONES MOVE */
+    drones.forEach(d=>{
+      d.x += d.vx*dt;
+      d.y += d.vy*dt;
+    });
+
+    /* COLLISIONS */
+    for(let i=drones.length-1;i>=0;i--){
+      const d=drones[i];
+
+      if(d.y > h+30){
+        drones.splice(i,1);
+        continue;
+      }
+
+      /* bullet hits */
+      for(let j=bullets.length-1;j>=0;j--){
+        let b=bullets[j];
+        if(Math.hypot(b.x-d.x,b.y-d.y)<d.r+4){
+          bullets.splice(j,1);
+          drones.splice(i,1);
+          score++;
+          break;
+        }
+      }
+
+      /* player hit */
+      if(Math.hypot(px-d.x,py-d.y) < d.r+18){
+        drones.splice(i,1);
+        lives--;
+        if(lives<=0) gameOver=true;
+      }
+    }
+  }
+
   draw();
-  if(gameOver){ ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,0,w,h); ctx.fillStyle='#fff'; ctx.fillText('Game Over - Score: '+score, w/2-80, h/2); }
+
+  /* GAME OVER */
+  if(gameOver){
+    document.getElementById("gameOver").style.display="flex";
+    document.getElementById("final").textContent=`Score: ${score} • Level: ${level}`;
+
+    if(score > highScore){
+      highScore = score;
+      localStorage.setItem("blaster_high",String(highScore));
+    }
+    document.getElementById("highText").textContent = 
+      `Best score on this device: ${highScore}`;
+  }
+
   requestAnimationFrame(loop);
 }
+
+/* DRAW */
 function draw(){
   ctx.clearRect(0,0,w,h);
-  ctx.fillStyle='#02102a'; ctx.fillRect(0,0,w,h);
-  ctx.fillStyle='#6fd3ff'; ctx.fillRect(px-16,py-8,32,16); ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(px,py-26,6,0,Math.PI*2); ctx.fill();
-  for(let b of bullets){ ctx.fillStyle='#ffd36b'; ctx.beginPath(); ctx.arc(b.x,b.y,4,0,Math.PI*2); ctx.fill(); }
-  for(let d of drones){ ctx.fillStyle='#ff7676'; ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,Math.PI*2); ctx.fill(); }
-  ctx.fillStyle='#fff'; ctx.font='14px Inter'; ctx.fillText('Score: '+score+' Lives: '+lives, 12, 18);
+
+  /* Player */
+  ctx.fillStyle="#6fd3ff";
+  ctx.fillRect(px-16, py-8, 32, 16);
+  ctx.fillStyle="#fff";
+  ctx.beginPath();
+  ctx.arc(px,py-26,6,0,Math.PI*2);
+  ctx.fill();
+
+  /* Bullets */
+  for(const b of bullets){
+    ctx.fillStyle="#ffd36b";
+    ctx.beginPath();
+    ctx.arc(b.x,b.y,4,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  /* Drones */
+  for(const d of drones){
+    ctx.fillStyle="#ff6b6b";
+    ctx.beginPath();
+    ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  /* HUD */
+  ctx.fillStyle="#fff";
+  ctx.font="14px Inter";
+  ctx.fillText(`Score: ${score}  Lives: ${lives}  Level: ${level}`, 12, 18);
+
+  document.getElementById("hud").style.display="inline";
+  document.getElementById("hud").textContent=`Spawn: ${spawnRate.toFixed(2)}s`;
 }
+
+/* START */
 requestAnimationFrame(loop);
 </script>
 </body>

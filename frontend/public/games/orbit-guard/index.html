@@ -1,0 +1,577 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Orbit Guard — GAYMZ</title>
+<style>
+:root{
+  --bg:#07101b;
+  --fg:#e5f0ff;
+  --card:#0b1220;
+}
+.light{
+  --bg:#f8fafc;
+  --fg:#0b1220;
+  --card:#ffffff;
+}
+html,body{
+  margin:0;
+  height:100%;
+  font-family:Inter,Arial,system-ui;
+  background:var(--bg);
+  color:var(--fg);
+  overflow:hidden;     /* prevent scroll with arrows/space */
+}
+.wrap{
+  padding:16px;
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.card{
+  width:100%;
+  max-width:980px;
+  background:var(--card);
+  padding:16px;
+  border-radius:12px;
+  box-shadow:0 12px 36px rgba(0,0,0,.45);
+}
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+}
+canvas{
+  width:100%;
+  height:auto;
+  border-radius:8px;
+  background:radial-gradient(circle at center,#0b1728,#020618);
+}
+
+/* overlays */
+.overlay{
+  position:absolute;
+  left:0;right:0;top:0;bottom:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.overlay-inner{
+  background:var(--card);
+  padding:20px;
+  border-radius:12px;
+  text-align:center;
+  box-shadow:0 10px 30px rgba(0,0,0,.5);
+  width:min(500px,90vw);
+}
+
+/* buttons */
+.btn{
+  padding:8px 12px;
+  border-radius:8px;
+  border:0;
+  cursor:pointer;
+  font-size:14px;
+}
+.btn-primary{
+  background:#22c55e;
+  color:#022c22;
+}
+.btn-ghost{
+  background:transparent;
+  border:1px solid rgba(148,163,184,.7);
+}
+.btn-danger{
+  background:#ef4444;
+  color:#f9fafb;
+}
+
+/* mobile controls */
+.controls{
+  display:none;
+  margin-top:10px;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+}
+.controls-row{
+  display:flex;
+  gap:6px;
+}
+.ctrl-btn{
+  width:60px;
+  height:50px;
+  border-radius:12px;
+  border:0;
+  font-size:18px;
+  background:rgba(248,250,252,0.1);
+  color:#e5e7eb;
+}
+.light .ctrl-btn{
+  background:#e5e7eb;
+  color:#0f172a;
+}
+.small{
+  font-size:13px;
+}
+.status-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:8px;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+@media (max-width:768px){
+  .controls{display:flex;}
+  .wrap{padding:8px;}
+  .card{padding:12px;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" id="card">
+    <div class="header">
+      <div style="font-weight:700">Orbit Guard — Game 6</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span id="hudText" class="small" style="display:none"></span>
+        <button id="theme" class="btn">☀️</button>
+        <button id="fs" class="btn">F</button>
+      </div>
+    </div>
+
+    <div style="position:relative">
+      <canvas id="c" width="920" height="420"></canvas>
+
+      <!-- Pause overlay -->
+      <div id="pauseOverlay" class="overlay" style="display:none">
+        <div class="overlay-inner">
+          <h2>Paused</h2>
+          <div style="margin-top:8px">
+            <button id="resume" class="btn btn-primary">Resume</button>
+            <button id="restart" class="btn btn-ghost">Restart</button>
+          </div>
+          <div class="small" style="margin-top:8px">
+            Hold SPACE to pause • A / D or ← / → to move • F fullscreen • R restart
+          </div>
+        </div>
+      </div>
+
+      <!-- Game over overlay -->
+      <div id="gameOver" class="overlay" style="display:none">
+        <div class="overlay-inner">
+          <h2>Game Over</h2>
+          <div id="final" style="margin:10px 0"></div>
+          <div id="highText" class="small" style="margin-bottom:8px"></div>
+          <div>
+            <button id="replay" class="btn btn-primary">Replay</button>
+            <button id="quit" class="btn btn-danger">Quit</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-row small">
+      <div>
+        You guard the glowing core from orbit. Rotate around the ring, collect blue orbs,
+        avoid red fragments. Hold SPACE to pause.
+      </div>
+      <div id="levelIndicator"></div>
+    </div>
+
+    <!-- Mobile controls -->
+    <div class="controls" id="mobileControls">
+      <div class="controls-row">
+        <button class="ctrl-btn" data-dir="left">◀</button>
+        <button class="ctrl-btn" data-dir="pause" style="width:80px">⏸</button>
+        <button class="ctrl-btn" data-dir="right">▶</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/*
+  Orbit Guard — Game 6
+  ----------------------------------------------------
+  CORE IDEA
+  - You are a small guardian ship moving on a fixed circular orbit around
+    a glowing core in the center of the screen.
+  - Blue "energy orbs" and red "fragment hazards" spin around the same orbit.
+
+  CONTROLS
+  - LEFT / RIGHT arrows or A / D  : move clockwise / counter–clockwise.
+  - (Mobile) tap ◀ / ▶ buttons     : nudge along the orbit.
+  - Hold SPACE                     : toggle pause (long-press style).
+  - R                              : restart current run.
+  - F                              : fullscreen toggle.
+  - Theme button                   : light / dark page background (shared with other games).
+
+  RULES & SCORING
+  - Your ship and all objects live on a circular ring around the center.
+  - Collect BLUE orbs -> +1 score.
+  - Touch a RED fragment -> lose 1 life.
+  - You start with 3 lives. At 0 lives, the run ends (Game Over).
+
+  LEVELS & DIFFICULTY
+  - Level starts at 1.
+  - Every 8 points of score, Level increases by 1.
+  - Higher levels:
+      • Shorter spawn interval (more objects).
+      • Faster angular speeds for orbs and fragments.
+  - HUD shows Score, Lives and Level.
+
+  PAUSE & OVERLAYS
+  - Hold SPACE for a brief moment to toggle pause.
+  - When paused, a centered card appears with Resume / Restart.
+  - On Game Over, an overlay shows:
+      • Final Score and Level reached.
+      • Best score stored in localStorage ("orbit_guard_high").
+
+  MOBILE
+  - On narrow screens, soft D-pad controls appear below the card:
+      ◀, ▶ and ⏸ buttons.
+  - Simple tap-to-nudge rotation; physics stays the same.
+
+  IMPLEMENTATION NOTES
+  - We represent everything on the ring using an angle in radians.
+  - Position on canvas:
+        x = cx + cos(angle) * radius
+        y = cy + sin(angle) * radius
+  - Player angle is updated based on input; objects each have their own
+    angular velocity so they slowly drift around the circle.
+*/
+
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+const W = c.width;
+const H = c.height;
+const CX = W / 2;
+const CY = H / 2;
+const ORBIT_RADIUS = 140;
+
+const hudText = document.getElementById("hudText");
+const levelIndicator = document.getElementById("levelIndicator");
+
+/* THEME */
+let theme = localStorage.getItem("g_theme") || "dark";
+const themeBtn = document.getElementById("theme");
+
+function applyTheme(){
+  document.documentElement.classList.toggle("light", theme === "light");
+  themeBtn.textContent = theme === "light" ? "🌙" : "☀️";
+  localStorage.setItem("g_theme", theme);
+}
+applyTheme();
+themeBtn.onclick = () => {
+  theme = theme === "light" ? "dark" : "light";
+  applyTheme();
+};
+
+/* FULLSCREEN */
+const card = document.getElementById("card");
+document.getElementById("fs").onclick = () => {
+  if(!document.fullscreenElement) card.requestFullscreen?.();
+  else document.exitFullscreen?.();
+};
+
+/* GAME STATE */
+let player = {
+  angle: -Math.PI / 2,  // start at top
+  speed: 2.6,           // rad/s base speed
+  dir: 0                // -1,0,+1
+};
+
+let objects = [];       // { angle, type:'orb'|'hazard', speed }
+let score = 0;
+let lives = 3;
+let level = 1;
+let spawnTimer = 0;
+let spawnInterval = 1.0;
+let paused = false;
+let gameOver = false;
+
+let spaceDown = false;
+let spaceTime = 0;
+let spaceHandled = false;
+
+let highScore = Number(localStorage.getItem("orbit_guard_high") || "0");
+
+/* INITIALIZE */
+function resetGame(){
+  player.angle = -Math.PI / 2;
+  player.dir = 0;
+  objects = [];
+  score = 0;
+  lives = 3;
+  level = 1;
+  spawnTimer = 0;
+  spawnInterval = 1.0;
+  paused = false;
+  gameOver = false;
+  spaceDown = false;
+  spaceHandled = false;
+  document.getElementById("pauseOverlay").style.display = "none";
+  document.getElementById("gameOver").style.display = "none";
+  updateLevelText();
+}
+function updateLevelText(){
+  levelIndicator.textContent = `Score: ${score} • Lives: ${lives} • Level: ${level}`;
+}
+
+/* SPAWNING */
+function spawnObject(){
+  const angle = Math.random() * Math.PI * 2;
+  const isOrb = Math.random() < 0.6;
+  const baseSpeed = 0.4 + 0.05 * (level - 1);
+  const sign = Math.random() < 0.5 ? -1 : 1;
+  objects.push({
+    angle,
+    type: isOrb ? "orb" : "hazard",
+    speed: sign * baseSpeed
+  });
+}
+
+/* INPUT */
+window.addEventListener("keydown", e => {
+  const k = e.key;
+  if(["ArrowLeft","ArrowRight"," ","Spacebar"].includes(k)){
+    e.preventDefault();
+  }
+
+  if(k === "ArrowLeft" || k === "a" || k === "A") player.dir = -1;
+  if(k === "ArrowRight"|| k === "d" || k === "D") player.dir =  1;
+
+  if(k === " " || k === "Spacebar"){
+    spaceDown = true;
+    spaceTime = performance.now()/1000;
+  }
+
+  if(k === "r" || k === "R") resetGame();
+  if(k === "f" || k === "F"){
+    if(!document.fullscreenElement) card.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  }
+});
+
+window.addEventListener("keyup", e => {
+  const k = e.key;
+  if(k === "ArrowLeft" || k === "a" || k === "A"){
+    if(player.dir === -1) player.dir = 0;
+  }
+  if(k === "ArrowRight" || k === "d" || k === "D"){
+    if(player.dir === 1) player.dir = 0;
+  }
+  if(k === " " || k === "Spacebar"){
+    spaceDown = false;
+    spaceHandled = false;
+  }
+});
+
+/* MOBILE BUTTONS */
+const mobileControls = document.getElementById("mobileControls");
+mobileControls.addEventListener("click", e => {
+  const btn = e.target.closest(".ctrl-btn");
+  if(!btn) return;
+  const dir = btn.getAttribute("data-dir");
+  if(dir === "left")  player.angle -= 0.3;
+  if(dir === "right") player.angle += 0.3;
+  if(dir === "pause"){
+    paused = !paused;
+    document.getElementById("pauseOverlay").style.display = paused ? "flex" : "none";
+  }
+});
+
+/* OVERLAY BUTTONS */
+document.getElementById("resume").onclick = () => {
+  paused = false;
+  document.getElementById("pauseOverlay").style.display = "none";
+};
+document.getElementById("restart").onclick = resetGame;
+document.getElementById("replay").onclick = resetGame;
+document.getElementById("quit").onclick   = () => { window.close?.(); };
+
+/* GAME LOOP */
+let last = performance.now();
+
+function loop(){
+  const now = performance.now();
+  const dt = (now - last)/1000;
+  last = now;
+
+  // long-press SPACE pause toggle
+  if(spaceDown && !spaceHandled){
+    if(performance.now()/1000 - spaceTime >= 0.1){
+      paused = !paused;
+      spaceHandled = true;
+      document.getElementById("pauseOverlay").style.display = paused ? "flex" : "none";
+    }
+  }
+
+  if(!paused && !gameOver){
+    // level scaling
+    level = 1 + Math.floor(score / 8);
+    spawnInterval = Math.max(0.45, 1.0 - 0.07 * (level-1));
+
+    // update player angle
+    player.angle += player.dir * player.speed * dt;
+    // keep angle in [0, 2π)
+    if(player.angle > Math.PI*2) player.angle -= Math.PI*2;
+    if(player.angle < 0)         player.angle += Math.PI*2;
+
+    // spawn objects
+    spawnTimer += dt;
+    while(spawnTimer >= spawnInterval){
+      spawnTimer -= spawnInterval;
+      spawnObject();
+    }
+
+    // update objects
+    for(const obj of objects){
+      obj.angle += obj.speed * dt;
+      if(obj.angle > Math.PI*2) obj.angle -= Math.PI*2;
+      if(obj.angle < 0)         obj.angle += Math.PI*2;
+    }
+
+    // collisions + cleanup
+    const px = CX + Math.cos(player.angle) * ORBIT_RADIUS;
+    const py = CY + Math.sin(player.angle) * ORBIT_RADIUS;
+    const playerR = 14;
+
+    for(let i = objects.length-1; i >= 0; i--){
+      const o = objects[i];
+      const ox = CX + Math.cos(o.angle) * ORBIT_RADIUS;
+      const oy = CY + Math.sin(o.angle) * ORBIT_RADIUS;
+      const dist = Math.hypot(px - ox, py - oy);
+      const hitR = o.type === "orb" ? 10 : 12;
+
+      if(dist < playerR + hitR){
+        if(o.type === "orb"){
+          score++;
+        }else{
+          lives--;
+          if(lives <= 0){
+            gameOver = true;
+          }
+        }
+        objects.splice(i,1);
+        updateLevelText();
+      }
+    }
+  }
+
+  draw();
+
+  if(gameOver){
+    document.getElementById("gameOver").style.display = "flex";
+    document.getElementById("final").textContent =
+      `Score: ${score} • Level: ${level}`;
+
+    if(score > highScore){
+      highScore = score;
+      localStorage.setItem("orbit_guard_high", String(highScore));
+    }
+    document.getElementById("highText").textContent =
+      `Best score on this device: ${highScore}`;
+  }
+
+  requestAnimationFrame(loop);
+}
+
+/* DRAW */
+function draw(){
+  // background starfield-ish
+  ctx.clearRect(0,0,W,H);
+  const bg = ctx.createRadialGradient(CX,CY,40,CX,CY,260);
+  bg.addColorStop(0,"#0f172a");
+  bg.addColorStop(1,"#020617");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0,0,W,H);
+
+  // faint stars
+  ctx.fillStyle = "rgba(148,163,184,0.4)";
+  for(let i=0;i<40;i++){
+    const sx = (i*143)%W;
+    const sy = (i*97)%H;
+    ctx.fillRect(sx,sy,1.5,1.5);
+  }
+
+  // glowing core
+  const coreGrad = ctx.createRadialGradient(CX,CY,0,CX,CY,40);
+  coreGrad.addColorStop(0,"#38bdf8");
+  coreGrad.addColorStop(1,"rgba(56,189,248,0)");
+  ctx.fillStyle = coreGrad;
+  ctx.beginPath();
+  ctx.arc(CX,CY,60,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = "#0ea5e9";
+  ctx.beginPath();
+  ctx.arc(CX,CY,18,0,Math.PI*2);
+  ctx.fill();
+
+  // orbit ring
+  ctx.strokeStyle = "rgba(148,163,184,0.5)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(CX,CY,ORBIT_RADIUS,0,Math.PI*2);
+  ctx.stroke();
+
+  // player
+  const px = CX + Math.cos(player.angle) * ORBIT_RADIUS;
+  const py = CY + Math.sin(player.angle) * ORBIT_RADIUS;
+  ctx.fillStyle = "#22c55e";
+  ctx.beginPath();
+  ctx.arc(px,py,14,0,Math.PI*2);
+  ctx.fill();
+  // little direction wedge
+  ctx.fillStyle = "#bbf7d0";
+  ctx.beginPath();
+  ctx.moveTo(px,py);
+  ctx.lineTo(px + Math.cos(player.angle)*18, py + Math.sin(player.angle)*18);
+  ctx.lineTo(px + Math.cos(player.angle+0.6)*10, py + Math.sin(player.angle+0.6)*10);
+  ctx.closePath();
+  ctx.fill();
+
+  // objects
+  for(const o of objects){
+    const ox = CX + Math.cos(o.angle) * ORBIT_RADIUS;
+    const oy = CY + Math.sin(o.angle) * ORBIT_RADIUS;
+    if(o.type === "orb"){
+      ctx.fillStyle = "#38bdf8";
+      ctx.beginPath();
+      ctx.arc(ox,oy,10,0,Math.PI*2);
+      ctx.fill();
+    }else{
+      ctx.fillStyle = "#f97373";
+      ctx.beginPath();
+      ctx.arc(ox,oy,12,0,Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = "#fee2e2";
+      ctx.beginPath();
+      ctx.arc(ox,oy,4,0,Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  // HUD
+  ctx.fillStyle = "#e5f0ff";
+  ctx.font = "14px Inter";
+  ctx.fillText(`Score: ${score}   Lives: ${lives}   Level: ${level}`, 12, 20);
+
+  hudText.style.display = "inline";
+  hudText.textContent = `Spawn: ${spawnInterval.toFixed(2)}s`;
+}
+
+/* START */
+updateLevelText();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

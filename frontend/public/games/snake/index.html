@@ -2,29 +2,181 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>Snake — GAYMZ</title>
 <style>
-:root{--bg:#07101b;--fg:#eef2ff;--card:#0b1220}
-.light{--bg:#f8fafc;--fg:#0b1220;--card:#ffffff}
-html,body{height:100%;margin:0;font-family:Inter, Arial;background:var(--bg);color:var(--fg);transition:background-color .25s,color .25s}
-.wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px}
-#card{width:100%;max-width:980px;background:var(--card);border-radius:12px;box-shadow:0 12px 40px rgba(2,6,23,.5);padding:18px;}
-.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.canvas-wrap{position:relative}
-canvas{display:block;width:100%;height:auto;background:linear-gradient(180deg,#07101b 0,#08131b 100%);border-radius:6px}
-.btn{cursor:pointer;padding:8px 12px;border-radius:8px;border:0;margin-left:6px}
-.card-centered{background:var(--card);border-radius:12px;padding:18px;width:520px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.4)}
-.overlay{position:absolute;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center}
-.small{font-size:13px;color:rgba(255,255,255,.8)}
+:root{
+  --bg:#07101b;
+  --fg:#eef2ff;
+  --card:#0b1220;
+  --accent:#22c55e;
+  --accent-soft:#16a34a;
+  --danger:#ff5a5a;
+}
+.light{
+  --bg:#f8fafc;
+  --fg:#0b1220;
+  --card:#ffffff;
+}
+html,body{
+  height:100%;
+  margin:0;
+  font-family:Inter, Arial, system-ui, -apple-system, BlinkMacSystemFont;
+  background:var(--bg);
+  color:var(--fg);
+  transition:background-color .25s,color .25s;
+  overflow:hidden;           /* stop page from scrolling with arrow keys / space */
+}
+.wrap{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+}
+#card{
+  width:100%;
+  max-width:980px;
+  background:var(--card);
+  border-radius:12px;
+  box-shadow:0 12px 40px rgba(2,6,23,.5);
+  padding:16px;
+}
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+  gap:8px;
+}
+.header-left{
+  font-weight:700;
+  font-size:15px;
+}
+.header-right{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.canvas-wrap{
+  position:relative;
+}
+canvas{
+  display:block;
+  width:100%;
+  height:auto;
+  background:linear-gradient(180deg,#07101b 0,#08131b 100%);
+  border-radius:6px;
+}
+.btn{
+  cursor:pointer;
+  padding:8px 12px;
+  border-radius:8px;
+  border:0;
+  margin:0;
+  font-size:13px;
+  background:rgba(148,163,184,.12);
+}
+.btn:active{
+  transform:scale(.97);
+}
+.btn-primary{
+  background:var(--accent);
+  color:#022c22;
+}
+.btn-danger{
+  background:var(--danger);
+  color:#111827;
+}
+.btn-ghost{
+  background:transparent;
+  border:1px solid rgba(148,163,184,.5);
+}
+.card-centered{
+  background:var(--card);
+  border-radius:12px;
+  padding:18px;
+  width:min(520px,90vw);
+  text-align:center;
+  box-shadow:0 8px 30px rgba(0,0,0,.4);
+}
+.overlay{
+  position:absolute;
+  left:0;
+  top:0;
+  right:0;
+  bottom:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.small{
+  font-size:13px;
+  color:rgba(255,255,255,.8);
+}
+.light .small{
+  color:rgba(15,23,42,.7);
+}
+
+/* Mobile controls */
+.controls{
+  margin-top:12px;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  user-select:none;
+}
+.controls-row{
+  display:flex;
+  gap:6px;
+}
+.ctrl-btn{
+  width:52px;
+  height:52px;
+  border-radius:12px;
+  border:0;
+  font-size:18px;
+  font-weight:600;
+  background:rgba(15,23,42,.9);
+  color:#e5e7eb;
+}
+.light .ctrl-btn{
+  background:#e5e7eb;
+  color:#0f172a;
+}
+
+/* Show controls on small screens */
+@media (max-width: 768px){
+  .wrap{
+    padding:8px;
+  }
+  #card{
+    padding:12px;
+  }
+  .controls{
+    display:flex;
+  }
+}
+
+/* Simple utility rows for status text */
+.status-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:8px;
+  gap:8px;
+  flex-wrap:wrap;
+}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div id="card">
     <div class="header">
-      <div style="font-weight:700">Snake — Game 1</div>
-      <div>
+      <div class="header-left">Snake — Game 1</div>
+      <div class="header-right">
+        <span id="hudText" class="small" style="display:none"></span>
         <button id="themeBtn" class="btn">☀️</button>
         <button id="fullscreen" class="btn">F</button>
       </div>
@@ -37,10 +189,12 @@ canvas{display:block;width:100%;height:auto;background:linear-gradient(180deg,#0
         <div class="card-centered">
           <h2>Paused</h2>
           <div style="margin-top:10px">
-            <button id="resume" class="btn">Resume</button>
-            <button id="restart" class="btn">Restart</button>
+            <button id="resume" class="btn btn-primary">Resume</button>
+            <button id="restart" class="btn btn-ghost">Restart</button>
           </div>
-          <div class="small" style="margin-top:8px">Hold SPACE to toggle pause • R restart • F fullscreen</div>
+          <div class="small" style="margin-top:8px">
+            Keyboard: Hold SPACE to toggle pause • R restart • F fullscreen
+          </div>
         </div>
       </div>
 
@@ -48,98 +202,359 @@ canvas{display:block;width:100%;height:auto;background:linear-gradient(180deg,#0
         <div class="card-centered">
           <h2>Game Over</h2>
           <div id="final" style="margin:10px 0"></div>
+          <div style="margin-bottom:8px" class="small" id="highScoreText"></div>
           <div>
-            <button id="replay" class="btn">Replay</button>
-            <button id="quit" class="btn">Quit</button>
+            <button id="replay" class="btn btn-primary">Replay</button>
+            <button id="quit" class="btn btn-danger">Quit</button>
           </div>
         </div>
       </div>
     </div>
 
-    <div style="margin-top:12px" class="small">Use arrow keys / WASD. Fullscreen (F). Pause by holding SPACE.</div>
+    <div class="status-row small">
+      <div>
+        Keyboard: Arrow keys / WASD. Fullscreen (F). Hold SPACE to pause.
+      </div>
+      <div id="levelIndicator"></div>
+    </div>
+
+    <!-- Mobile controls -->
+    <div class="controls" id="mobileControls">
+      <div class="small">Touch controls</div>
+      <div class="controls-row">
+        <button class="ctrl-btn" data-dir="up">▲</button>
+      </div>
+      <div class="controls-row">
+        <button class="ctrl-btn" data-dir="left">◀</button>
+        <button class="ctrl-btn" data-dir="pause" style="width:70px">⏸</button>
+        <button class="ctrl-btn" data-dir="right">▶</button>
+      </div>
+      <div class="controls-row">
+        <button class="ctrl-btn" data-dir="down">▼</button>
+      </div>
+      <div class="small" style="margin-top:2px">
+        Tip: You can also swipe on the game area to move.
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
-/* Minimal polished snake */
-const c = document.getElementById('c'), ctx = c.getContext('2d');
+/* ====== THEME ====== */
+const c = document.getElementById('c');
+const ctx = c.getContext('2d');
 const themeBtn = document.getElementById('themeBtn');
 const fullscreenBtn = document.getElementById('fullscreen');
-let theme = localStorage.getItem('g_theme') || 'dark';
-function applyTheme(){ document.documentElement.classList.toggle('light', theme==='light'); themeBtn.textContent = theme==='light' ? '🌙' : '☀️'; localStorage.setItem('g_theme', theme); }
-applyTheme();
-themeBtn.onclick = ()=>{ theme = theme==='light' ? 'dark' : 'light'; applyTheme(); }
+const levelIndicator = document.getElementById('levelIndicator');
+const hudText = document.getElementById('hudText');
+const card = document.getElementById('card');
 
-fullscreenBtn.onclick = ()=> {
-  if(!document.fullscreenElement) c.requestFullscreen?.(); else document.exitFullscreen?.();
+let theme = localStorage.getItem('g_theme') || 'dark';
+function applyTheme(){
+  document.documentElement.classList.toggle('light', theme === 'light');
+  themeBtn.textContent = theme === 'light' ? '🌙' : '☀️';
+  localStorage.setItem('g_theme', theme);
+}
+applyTheme();
+
+themeBtn.onclick = () => {
+  theme = theme === 'light' ? 'dark' : 'light';
+  applyTheme();
 };
 
+/* ====== FULLSCREEN (fixed) ====== */
+function isFullscreen(){
+  return document.fullscreenElement ||
+         document.webkitFullscreenElement ||
+         document.mozFullScreenElement ||
+         document.msFullscreenElement;
+}
+
+function requestFs(el){
+  if (el.requestFullscreen) el.requestFullscreen();
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+  else if (el.msRequestFullscreen) el.msRequestFullscreen();
+}
+
+function exitFs(){
+  if (document.exitFullscreen) document.exitFullscreen();
+  else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+  else if (document.msExitFullscreen) document.msExitFullscreen();
+}
+
+function toggleFullscreen(){
+  if (!isFullscreen()){
+    requestFs(card);   // make the whole card fullscreen
+  } else {
+    exitFs();
+  }
+}
+
+fullscreenBtn.onclick = toggleFullscreen;
+
+/* ====== SNAKE GAME STATE ====== */
 const CELL = 18;
-let cols = Math.floor(c.width / CELL), rows = Math.floor(c.height / CELL);
-let snake = [], dir={x:1,y:0}, food=null, score=0, speed=8, acc=0, last=performance.now();
-let paused=false, gameOver=false;
-let spaceDown=false, spaceTime=0, spaceHandled=false;
-function spawnFood(){ while(true){ let f={x:Math.floor(Math.random()*(cols-2))+1, y:Math.floor(Math.random()*(rows-2))+1}; if(!snake.some(s=>s.x===f.x&&s.y===f.y)) return f; } }
-function reset(){ cols = Math.floor(c.width/CELL); rows = Math.floor(c.height/CELL); snake=[{x:Math.floor(cols/2),y:Math.floor(rows/2)},{x:Math.floor(cols/2)-1,y:Math.floor(rows/2)}]; dir={x:1,y:0}; food=spawnFood(); score=0; speed=8; paused=false; gameOver=false; document.getElementById('paused').style.display='none'; document.getElementById('gameover').style.display='none'; }
+const BASE_SPEED = 6;
+const MAX_SPEED = 22;
+const LEVEL_STEP = 5;
+
+let cols = Math.floor(c.width / CELL);
+let rows = Math.floor(c.height / CELL);
+
+let snake = [];
+let dir = { x: 1, y: 0 };
+let food = null;
+let score = 0;
+let highScore = Number(localStorage.getItem('snake_highscore') || '0');
+let level = 1;
+let speed = BASE_SPEED;
+let acc = 0;
+let last = performance.now();
+let paused = false;
+let gameOver = false;
+
+let spaceDown = false;
+let spaceTime = 0;
+let spaceHandled = false;
+
+/* ====== HELPERS ====== */
+function spawnFood(){
+  while (true) {
+    const f = {
+      x: Math.floor(Math.random() * (cols - 2)) + 1,
+      y: Math.floor(Math.random() * (rows - 2)) + 1
+    };
+    if (!snake.some(s => s.x === f.x && s.y === f.y)) return f;
+  }
+}
+
+function setDirection(nx, ny){
+  if (snake.length > 1) {
+    if (nx === -dir.x && ny === -dir.y) return;
+  }
+  dir = { x: nx, y: ny };
+}
+
+function updateLevel(){
+  level = 1 + Math.floor(score / LEVEL_STEP);
+  speed = Math.min(MAX_SPEED, BASE_SPEED + (level - 1) * 1.2);
+  levelIndicator.textContent = "Score: " + score + " • Level: " + level;
+}
+
+/* ====== RESET / INIT ====== */
+function reset(){
+  cols = Math.floor(c.width / CELL);
+  rows = Math.floor(c.height / CELL);
+
+  snake = [
+    { x: Math.floor(cols / 2), y: Math.floor(rows / 2) },
+    { x: Math.floor(cols / 2) - 1, y: Math.floor(rows / 2) }
+  ];
+  dir = { x: 1, y: 0 };
+  food = spawnFood();
+  score = 0;
+  level = 1;
+  speed = BASE_SPEED;
+  paused = false;
+  gameOver = false;
+  acc = 0;
+  last = performance.now();
+  document.getElementById('paused').style.display = 'none';
+  document.getElementById('gameover').style.display = 'none';
+  updateLevel();
+}
 reset();
 
-window.addEventListener('keydown', e=>{
-  if(e.key==='ArrowLeft'||e.key==='a'){ if(!(dir.x===1 && dir.y===0)) dir={x:-1,y:0} }
-  if(e.key==='ArrowRight'||e.key==='d'){ if(!(dir.x===-1 && dir.y===0)) dir={x:1,y:0} }
-  if(e.key==='ArrowUp'||e.key==='w'){ if(!(dir.y===1 && dir.x===0)) dir={x:0,y:-1} }
-  if(e.key==='ArrowDown'||e.key==='s'){ if(!(dir.y===-1 && dir.x===0)) dir={x:0,y:1} }
-  if(e.key==='f') fullscreenBtn.click();
-  if(e.key==='r'){ reset(); }
-  if(e.key===' '){
-    spaceDown=true; spaceTime=performance.now()/1000; spaceHandled=false;
+/* ====== INPUT: KEYBOARD (with preventDefault) ====== */
+window.addEventListener('keydown', e => {
+  const key = e.key;
+
+  // prevent page scrolling for game keys
+  if (
+    key === 'ArrowLeft' || key === 'ArrowRight' ||
+    key === 'ArrowUp'   || key === 'ArrowDown' ||
+    key === ' ' || key === 'Spacebar' || key === 'f' || key === 'F'
+  ){
+    e.preventDefault();
+  }
+
+  if (key === 'ArrowLeft' || key === 'a' || key === 'A') setDirection(-1, 0);
+  if (key === 'ArrowRight' || key === 'd' || key === 'D') setDirection(1, 0);
+  if (key === 'ArrowUp' || key === 'w' || key === 'W') setDirection(0, -1);
+  if (key === 'ArrowDown' || key === 's' || key === 'S') setDirection(0, 1);
+
+  if (key === 'f' || key === 'F') toggleFullscreen();
+  if (key === 'r' || key === 'R') reset();
+
+  if (key === ' ' || key === 'Spacebar'){
+    spaceDown = true;
+    spaceTime = performance.now() / 1000;
+    spaceHandled = false;
   }
 });
-window.addEventListener('keyup', e=>{ if(e.key===' '){ spaceDown=false; spaceHandled=false;} });
 
-document.getElementById('resume').onclick = ()=>{ paused=false; document.getElementById('paused').style.display='none'; };
-document.getElementById('restart').onclick = ()=>{ reset(); };
-document.getElementById('replay').onclick = ()=>{ reset(); };
-document.getElementById('quit').onclick = ()=>{ window.close?.(); };
+window.addEventListener('keyup', e => {
+  if (e.key === ' ' || e.key === 'Spacebar'){
+    spaceDown = false;
+    spaceHandled = false;
+  }
+});
+
+/* ====== INPUT: MOBILE BUTTONS ====== */
+document.getElementById('mobileControls').addEventListener('click', e => {
+  const btn = e.target.closest('.ctrl-btn');
+  if (!btn) return;
+  const dirCode = btn.getAttribute('data-dir');
+  if (dirCode === 'up') setDirection(0, -1);
+  if (dirCode === 'down') setDirection(0, 1);
+  if (dirCode === 'left') setDirection(-1, 0);
+  if (dirCode === 'right') setDirection(1, 0);
+  if (dirCode === 'pause'){
+    paused = !paused;
+    document.getElementById('paused').style.display = paused ? 'flex' : 'none';
+  }
+});
+
+/* ====== INPUT: TOUCH SWIPE ====== */
+let touchStartX = null, touchStartY = null;
+c.addEventListener('touchstart', e => {
+  const t = e.changedTouches[0];
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+}, { passive:true });
+
+c.addEventListener('touchend', e => {
+  if (touchStartX === null || touchStartY === null) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStartX;
+  const dy = t.clientY - touchStartY;
+  touchStartX = touchStartY = null;
+
+  if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+
+  if (Math.abs(dx) > Math.abs(dy)){
+    if (dx > 0) setDirection(1,0);
+    else setDirection(-1,0);
+  } else {
+    if (dy > 0) setDirection(0,1);
+    else setDirection(0,-1);
+  }
+}, { passive:true });
+
+/* ====== OVERLAY BUTTONS ====== */
+document.getElementById('resume').onclick = () => {
+  paused = false;
+  document.getElementById('paused').style.display = 'none';
+};
+document.getElementById('restart').onclick = () => { reset(); };
+document.getElementById('replay').onclick = () => { reset(); };
+document.getElementById('quit').onclick = () => {
+  window.close && window.close();
+};
+
+/* ====== DRAWING ====== */
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  ctx.fill();
+}
 
 function draw(){
-  ctx.clearRect(0,0,c.width,c.height);
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#07101b';
-  ctx.fillRect(0,0,c.width,c.height);
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#07101b';
+  const fg = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim() || '#ffffff';
+
+  ctx.clearRect(0, 0, c.width, c.height);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, c.width, c.height);
+
   // food
   ctx.fillStyle = '#ff5a5a';
-  ctx.fillRect(food.x*CELL+4, food.y*CELL+4, CELL-8, CELL-8);
-  // snake
-  for(let i=0;i<snake.length;i++){
-    let s=snake[i];
-    ctx.fillStyle = i===0 ? '#22c55e' : '#16a34a';
-    roundRect(ctx, s.x*CELL+1, s.y*CELL+1, CELL-2, CELL-2, 4);
-  }
-  // hud
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim() || '#fff';
-  ctx.font = '14px Inter, Arial';
-  ctx.fillText('Score: ' + score, 8, 18);
-}
-function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); ctx.fill(); }
+  ctx.fillRect(food.x * CELL + 4, food.y * CELL + 4, CELL - 8, CELL - 8);
 
-function loop(){
-  let now=performance.now(), dt=(now-last)/1000; last=now; acc += dt;
-  // long-press pause
-  if(spaceDown && !spaceHandled){
-    if(performance.now()/1000 - spaceTime >= 0.1){ paused = !paused; spaceHandled=true; document.getElementById('paused').style.display = paused ? 'flex' : 'none'; }
+  // snake
+  for (let i = 0; i < snake.length; i++){
+    const s = snake[i];
+    ctx.fillStyle = i === 0 ? '#22c55e' : '#16a34a';
+    roundRect(ctx, s.x * CELL + 1, s.y * CELL + 1, CELL - 2, CELL - 2, 4);
   }
-  if(!paused && !gameOver){
-    let stepSec = 1/speed;
-    while(acc >= stepSec){
-      acc -= stepSec;
-      let head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
-      if(head.x<0||head.x>=cols||head.y<0||head.y>=rows){ gameOver=true; break; }
-      if(snake.some(s=>s.x===head.x&&s.y===head.y)){ gameOver=true; break; }
-      snake.unshift(head);
-      if(head.x===food.x&&head.y===food.y){ score++; food=spawnFood(); speed = Math.min(20, speed+0.3); } else { snake.pop(); }
+
+  ctx.fillStyle = fg;
+  ctx.font = '14px Inter, Arial';
+  ctx.fillText('Score: ' + score + '   Level: ' + level, 8, 18);
+
+  hudText.style.display = 'inline';
+  hudText.textContent = 'Speed: ' + speed.toFixed(1) + ' cells/sec';
+}
+
+/* ====== GAME LOOP ====== */
+function loop(){
+  const now = performance.now();
+  const dt = (now - last) / 1000;
+  last = now;
+  acc += dt;
+
+  if (spaceDown && !spaceHandled){
+    if (performance.now()/1000 - spaceTime >= 0.1){
+      paused = !paused;
+      spaceHandled = true;
+      document.getElementById('paused').style.display = paused ? 'flex' : 'none';
     }
   }
+
+  if (!paused && !gameOver){
+    const stepSec = 1 / speed;
+    while (acc >= stepSec){
+      acc -= stepSec;
+
+      const head = {
+        x: snake[0].x + dir.x,
+        y: snake[0].y + dir.y
+      };
+
+      if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= rows){
+        gameOver = true;
+        break;
+      }
+
+      if (snake.some(s => s.x === head.x && s.y === head.y)){
+        gameOver = true;
+        break;
+      }
+
+      snake.unshift(head);
+
+      if (head.x === food.x && head.y === food.y){
+        score++;
+        updateLevel();
+        food = spawnFood();
+      } else {
+        snake.pop();
+      }
+    }
+  }
+
   draw();
-  if(gameOver){ document.getElementById('final').textContent = "Score: "+score; document.getElementById('gameover').style.display='flex'; }
+
+  if (gameOver){
+    document.getElementById('gameover').style.display = 'flex';
+    document.getElementById('final').textContent =
+      "Score: " + score + "  •  Level Reached: " + level;
+
+    if (score > highScore){
+      highScore = score;
+      localStorage.setItem('snake_highscore', String(highScore));
+    }
+    document.getElementById('highScoreText').textContent =
+      "Best Score on this device: " + highScore;
+  }
+
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

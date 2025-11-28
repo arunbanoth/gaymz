@@ -1,137 +1,654 @@
 <!doctype html>
 <html>
 <head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>Comet Collector — GAYMZ</title>
 <style>
-:root{--bg:#081028;--fg:#f3f8ff;--card:#0b1220}.light{--bg:#f8fafc;--fg:#0b1220;--card:#fff}
-html,body{margin:0;font-family:Inter,Arial;background:var(--bg);color:var(--fg)}
-.wrap{padding:36px;display:flex;justify-content:center}
-.card{width:100%;max-width:960px;background:var(--card);padding:18px;border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,.45)}
-.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-canvas{width:100%;height:420px;border-radius:8px;background:linear-gradient(180deg,#02102a,#051026)}
-.small{font-size:13px;opacity:.9}
-.btn{padding:8px;border-radius:8px;margin-left:6px}
-.overlay{position:relative}
-.centercard{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center}
+:root{
+  --bg:#081028;
+  --fg:#f3f8ff;
+  --card:#0b1220;
+}
+.light{
+  --bg:#f8fafc;
+  --fg:#0b1220;
+  --card:#ffffff;
+}
+html,body{
+  margin:0;
+  height:100%;
+  font-family:Inter,Arial,system-ui;
+  background:var(--bg);
+  color:var(--fg);
+  overflow:hidden;          /* prevent page scroll with arrows/space */
+}
+.wrap{
+  min-height:100vh;
+  padding:16px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.card{
+  width:100%;
+  max-width:960px;
+  background:var(--card);
+  padding:16px;
+  border-radius:12px;
+  box-shadow:0 12px 36px rgba(0,0,0,.45);
+}
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+  gap:8px;
+}
+.header-left{
+  font-weight:700;
+  font-size:15px;
+}
+.header-right{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+canvas{
+  width:100%;
+  height:auto;
+  border-radius:8px;
+  background:linear-gradient(180deg,#02102a,#051026);
+}
+.small{
+  font-size:13px;
+  opacity:.9;
+}
+.btn{
+  padding:8px 12px;
+  border-radius:8px;
+  border:0;
+  margin:0;
+  cursor:pointer;
+  font-size:13px;
+  background:rgba(148,163,184,.12);
+}
+.btn:active{
+  transform:scale(.97);
+}
+.btn-primary{
+  background:#22c55e;
+  color:#022c22;
+}
+.btn-ghost{
+  background:transparent;
+  border:1px solid rgba(148,163,184,.5);
+}
+.btn-danger{
+  background:#ef4444;
+  color:#111827;
+}
+.overlay-wrap{
+  position:relative;
+}
+.center-card{
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  bottom:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.center-inner{
+  background:var(--card);
+  padding:18px;
+  border-radius:12px;
+  box-shadow:0 12px 30px rgba(0,0,0,.5);
+  width:min(520px,90vw);
+  text-align:center;
+}
+
+/* status row */
+.status-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:8px;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+/* Mobile controls */
+.controls{
+  margin-top:12px;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  user-select:none;
+}
+.controls-row{
+  display:flex;
+  gap:6px;
+}
+.ctrl-btn{
+  width:60px;
+  height:50px;
+  border-radius:12px;
+  border:0;
+  font-size:18px;
+  font-weight:600;
+  background:rgba(15,23,42,.9);
+  color:#e5e7eb;
+}
+.light .ctrl-btn{
+  background:#e5e7eb;
+  color:#0f172a;
+}
+
+/* show on small screens */
+@media (max-width: 768px){
+  .wrap{
+    padding:8px;
+  }
+  .card{
+    padding:12px;
+  }
+  .controls{
+    display:flex;
+  }
+}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="card">
+  <div class="card" id="card">
     <div class="header">
-      <div style="font-weight:700">Comet Collector — Game 2</div>
-      <div>
+      <div class="header-left">Comet Collector — Game 2</div>
+      <div class="header-right">
+        <span id="hudText" class="small" style="display:none"></span>
         <button id="theme" class="btn">☀️</button>
         <button id="fs" class="btn">F</button>
       </div>
     </div>
-    <div class="overlay">
+
+    <div class="overlay-wrap">
       <canvas id="c" width="920" height="420"></canvas>
-      <div id="pauseOverlay" class="centercard" style="display:none">
-        <div style="background:var(--card);padding:18px;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.5)">
+
+      <!-- Paused overlay -->
+      <div id="pauseOverlay" class="center-card" style="display:none">
+        <div class="center-inner">
           <h3>Paused</h3>
-          <div style="margin-top:8px"><button id="resume">Resume</button> <button id="restart">Restart</button></div>
+          <div style="margin-top:8px">
+            <button id="resume" class="btn btn-primary">Resume</button>
+            <button id="restart" class="btn btn-ghost">Restart</button>
+          </div>
+          <div class="small" style="margin-top:8px">
+            Keyboard: Hold SPACE to toggle pause • R restart • F fullscreen
+          </div>
+        </div>
+      </div>
+
+      <!-- Game over overlay -->
+      <div id="gameOverOverlay" class="center-card" style="display:none">
+        <div class="center-inner">
+          <h3>Game Over</h3>
+          <div id="final" style="margin:10px 0"></div>
+          <div id="highScoreText" class="small" style="margin-bottom:8px"></div>
+          <div>
+            <button id="replay" class="btn btn-primary">Replay</button>
+            <button id="quit" class="btn btn-danger">Quit</button>
+          </div>
         </div>
       </div>
     </div>
-    <div style="margin-top:10px" class="small">Move with ← → or A/D. Catch stars, avoid comets. SPACE hold to pause.</div>
+
+    <div class="status-row small">
+      <div>
+        Keyboard: ← → / A D. Catch stars, avoid comets. Hold SPACE to pause. F fullscreen.
+      </div>
+      <div id="levelIndicator"></div>
+    </div>
+
+    <!-- Mobile controls -->
+    <div class="controls" id="mobileControls">
+      <div class="small">Touch controls</div>
+      <div class="controls-row">
+        <button class="ctrl-btn" data-dir="left">◀</button>
+        <button class="ctrl-btn" data-dir="pause" style="width:80px">⏸</button>
+        <button class="ctrl-btn" data-dir="right">▶</button>
+      </div>
+      <div class="small" style="margin-top:2px">
+        Tip: You can also swipe left/right on the game.
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
-const c=document.getElementById('c'), ctx=c.getContext('2d');
-let theme = localStorage.getItem('g_theme')||'dark';
-function apply(){document.documentElement.classList.toggle('light', theme==='light'); document.getElementById('theme').textContent = theme==='light' ? '🌙' : '☀️'; localStorage.setItem('g_theme', theme);}
-apply();
-document.getElementById('theme').onclick = ()=>{ theme = theme==='light' ? 'dark' : 'light'; apply(); }
-document.getElementById('fs').onclick = ()=>{ if(!document.fullscreenElement) c.requestFullscreen?.(); else document.exitFullscreen?.(); }
+/* ====== CANVAS & THEME ====== */
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+const themeBtn = document.getElementById("theme");
+const card = document.getElementById("card");
+const fsBtn = document.getElementById("fs");
+const hudText = document.getElementById("hudText");
+const levelIndicator = document.getElementById("levelIndicator");
 
-let w=c.width, h=c.height;
-let ship={x:w/2,y:h-36,w:96,h:16,speed:420};
-let stars=[], comets=[], powerups=[], particles=[];
-let spawnAcc=0, spawnInterval=0.9, score=0, lives=3, paused=false, gameOver=false;
-let spaceDown=false, spaceTime=0, spaceHandled=false;
-function reset(){ stars=[];comets=[];powerups=[];particles=[];score=0;lives=3;spawnAcc=0;paused=false;gameOver=false; ship.x = w/2; }
-reset();
+let theme = localStorage.getItem("g_theme") || "dark";
+function applyTheme(){
+  document.documentElement.classList.toggle("light", theme === "light");
+  themeBtn.textContent = theme === "light" ? "🌙" : "☀️";
+  localStorage.setItem("g_theme", theme);
+}
+applyTheme();
 
-window.addEventListener('keydown', e=>{
-  if(e.key==='ArrowLeft'||e.key==='a') ship.left=true;
-  if(e.key==='ArrowRight'||e.key==='d') ship.right=true;
-  if(e.key===' ') { spaceDown=true; spaceTime=performance.now()/1000; spaceHandled=false; }
-  if(e.key==='r') reset();
-});
-window.addEventListener('keyup', e=>{
-  if(e.key==='ArrowLeft'||e.key==='a') ship.left=false;
-  if(e.key==='ArrowRight'||e.key==='d') ship.right=false;
-  if(e.key===' ') { spaceDown=false; spaceHandled=false; }
-});
+themeBtn.onclick = () => {
+  theme = theme === "light" ? "dark" : "light";
+  applyTheme();
+};
 
-function spawn(){
-  if(Math.random() < 0.18) comets.push({x:Math.random()*w, y:-20, r:12 + Math.random()*16, speed: 120 + Math.random()*120});
-  else stars.push({x:Math.random()*w, y:-8, r:6+Math.random()*4, speed: 80+Math.random()*60});
-  if(Math.random() < 0.05) powerups.push({x:Math.random()*(w-60)+30,y:-18,type:Math.random()<0.6?'magnet':'score',ttl:9});
+/* ====== FULLSCREEN (like Snake game) ====== */
+function isFullscreen(){
+  return document.fullscreenElement ||
+         document.webkitFullscreenElement ||
+         document.mozFullScreenElement ||
+         document.msFullscreenElement;
+}
+function requestFs(el){
+  if (el.requestFullscreen) el.requestFullscreen();
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+  else if (el.msRequestFullscreen) el.msRequestFullscreen();
+}
+function exitFs(){
+  if (document.exitFullscreen) document.exitFullscreen();
+  else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+  else if (document.msExitFullscreen) document.msExitFullscreen();
+}
+function toggleFullscreen(){
+  if (!isFullscreen()) requestFs(card);
+  else exitFs();
+}
+fsBtn.onclick = toggleFullscreen;
+
+/* ====== GAME STATE ====== */
+const w = c.width;
+const h = c.height;
+
+const BASE_SHIP_SPEED = 420;
+const BASE_SPAWN_INTERVAL = 0.9;
+const MIN_SPAWN_INTERVAL = 0.35;
+const LEVEL_STEP = 10; // score per level
+
+let ship = {
+  x: w / 2 - 48,
+  y: h - 40,
+  w: 96,
+  h: 18,
+  speed: BASE_SHIP_SPEED,
+  left: false,
+  right: false
+};
+
+let stars = [];
+let comets = [];
+let powerups = [];
+let score = 0;
+let lives = 3;
+let level = 1;
+let spawnAcc = 0;
+let spawnInterval = BASE_SPAWN_INTERVAL;
+let paused = false;
+let gameOver = false;
+let highScore = Number(localStorage.getItem("comet_highscore") || "0");
+
+/* magnet powerup (simple effect) */
+let magnetActive = false;
+let magnetTimer = 0;
+
+let spaceDown = false;
+let spaceTime = 0;
+let spaceHandled = false;
+
+function updateLevel(){
+  level = 1 + Math.floor(score / LEVEL_STEP);
+  spawnInterval = Math.max(MIN_SPAWN_INTERVAL, BASE_SPAWN_INTERVAL - (level - 1) * 0.06);
+  ship.speed = BASE_SHIP_SPEED + (level - 1) * 40;
+  levelIndicator.textContent = `Score: ${score} • Level: ${level} • Lives: ${lives}`;
 }
 
-let last=performance.now(), acc=0;
+/* spawn entities, scale speeds a bit with level */
+function spawn(){
+  const lvFactor = 1 + (level - 1) * 0.12;
+  if (Math.random() < 0.22){
+    comets.push({
+      x: Math.random() * w,
+      y: -20,
+      r: 12 + Math.random() * 16,
+      speed: (120 + Math.random() * 120) * lvFactor
+    });
+  } else {
+    stars.push({
+      x: Math.random() * w,
+      y: -8,
+      r: 5 + Math.random() * 4,
+      speed: (80 + Math.random() * 60) * lvFactor
+    });
+  }
+  if (Math.random() < 0.06){
+    powerups.push({
+      x: Math.random() * (w - 60) + 30,
+      y: -18,
+      type: Math.random() < 0.55 ? "magnet" : "score",
+      ttl: 9
+    });
+  }
+}
+
+function resetGame(){
+  stars = [];
+  comets = [];
+  powerups = [];
+  score = 0;
+  lives = 3;
+  spawnAcc = 0;
+  paused = false;
+  gameOver = false;
+  ship.x = w / 2 - ship.w / 2;
+  ship.left = ship.right = false;
+  magnetActive = false;
+  magnetTimer = 0;
+  spawnInterval = BASE_SPAWN_INTERVAL;
+  updateLevel();
+  document.getElementById("pauseOverlay").style.display = "none";
+  document.getElementById("gameOverOverlay").style.display = "none";
+}
+resetGame();
+
+/* ====== INPUT: KEYBOARD (prevent page scroll) ====== */
+window.addEventListener("keydown", e => {
+  const key = e.key;
+
+  if (
+    key === "ArrowLeft" || key === "ArrowRight" ||
+    key === " " || key === "Spacebar" ||
+    key === "f" || key === "F"
+  ){
+    e.preventDefault();
+  }
+
+  if (key === "ArrowLeft" || key === "a" || key === "A") ship.left = true;
+  if (key === "ArrowRight" || key === "d" || key === "D") ship.right = true;
+
+  if (key === "f" || key === "F") toggleFullscreen();
+  if (key === "r" || key === "R") resetGame();
+
+  if (key === " " || key === "Spacebar"){
+    spaceDown = true;
+    spaceTime = performance.now() / 1000;
+    spaceHandled = false;
+  }
+});
+
+window.addEventListener("keyup", e => {
+  const key = e.key;
+  if (key === "ArrowLeft" || key === "a" || key === "A") ship.left = false;
+  if (key === "ArrowRight" || key === "d" || key === "D") ship.right = false;
+  if (key === " " || key === "Spacebar"){
+    spaceDown = false;
+    spaceHandled = false;
+  }
+});
+
+/* ====== MOBILE BUTTONS ====== */
+document.getElementById("mobileControls").addEventListener("mousedown", handleMobileDown);
+document.getElementById("mobileControls").addEventListener("touchstart", handleMobileDown, {passive:true});
+document.getElementById("mobileControls").addEventListener("mouseup", handleMobileUp);
+document.getElementById("mobileControls").addEventListener("mouseleave", handleMobileUp);
+document.getElementById("mobileControls").addEventListener("touchend", handleMobileUp);
+
+function handleMobileDown(e){
+  const btn = e.target.closest(".ctrl-btn");
+  if (!btn) return;
+  const d = btn.getAttribute("data-dir");
+  if (d === "left"){ ship.left = true; ship.right = false; }
+  if (d === "right"){ ship.right = true; ship.left = false; }
+  if (d === "pause"){
+    paused = !paused;
+    document.getElementById("pauseOverlay").style.display = paused ? "flex" : "none";
+  }
+}
+function handleMobileUp(e){
+  ship.left = false;
+  ship.right = false;
+}
+
+/* ====== TOUCH SWIPE LEFT/RIGHT ====== */
+let touchStartX = null;
+c.addEventListener("touchstart", e => {
+  const t = e.changedTouches[0];
+  touchStartX = t.clientX;
+}, {passive:true});
+c.addEventListener("touchend", e => {
+  if (touchStartX === null) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStartX;
+  touchStartX = null;
+  if (Math.abs(dx) < 20) return;
+
+  if (dx > 0){ ship.right = true; ship.left = false; }
+  else { ship.left = true; ship.right = false; }
+
+  setTimeout(() => { ship.left = false; ship.right = false; }, 150);
+}, {passive:true});
+
+/* ====== OVERLAY BUTTONS ====== */
+document.getElementById("resume").onclick = () => {
+  paused = false;
+  document.getElementById("pauseOverlay").style.display = "none";
+};
+document.getElementById("restart").onclick = () => resetGame();
+document.getElementById("replay").onclick = () => resetGame();
+document.getElementById("quit").onclick = () => { window.close && window.close(); };
+
+/* ====== DRAW ====== */
+function draw(){
+  const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#081028";
+  const fg = getComputedStyle(document.documentElement).getPropertyValue("--fg").trim() || "#ffffff";
+
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0,0,w,h);
+
+  // stars
+  for (const s of stars){
+    ctx.fillStyle = "#ffe77a";
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // comets
+  for (const co of comets){
+    ctx.fillStyle = "#ff8b5a";
+    ctx.beginPath();
+    ctx.arc(co.x, co.y, co.r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,140,80,0.18)";
+    ctx.fillRect(co.x - 3*co.r, co.y - 3*co.r, co.r*2, co.r);
+  }
+
+  // powerups
+  for (const p of powerups){
+    ctx.fillStyle = p.type === "magnet" ? "#8bd3ff" : "#c8ffb5";
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 8, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // ship
+  ctx.fillStyle = "#9bd4ff";
+  ctx.fillRect(ship.x, ship.y, ship.w, ship.h);
+
+  // HUD
+  ctx.fillStyle = fg;
+  ctx.font = "14px Inter, Arial";
+  ctx.fillText(`Score: ${score}  Lives: ${lives}  Level: ${level}`, 12, 20);
+  if (magnetActive){
+    ctx.fillText("Magnet!", w - 90, 20);
+  }
+
+  hudText.style.display = "inline";
+  hudText.textContent = `Spawn: ${spawnInterval.toFixed(2)}s • Ship speed: ${ship.speed.toFixed(0)}`;
+}
+
+/* ====== UPDATE & LOOP ====== */
+let last = performance.now();
+let acc = 0;
+
 function loop(){
-  let now=performance.now(), dt=(now-last)/1000; last=now; acc+=dt;
-  if(spaceDown && !spaceHandled && (performance.now()/1000 - spaceTime) >= 0.1){ paused = !paused; spaceHandled=true; document.getElementById('pauseOverlay').style.display = paused?'flex':'none'; }
-  if(!paused && !gameOver){
-    if(ship.left) ship.x -= ship.speed*dt;
-    if(ship.right) ship.x += ship.speed*dt;
-    ship.x = Math.max(10, Math.min(w-10-ship.w, ship.x));
-    spawnAcc += dt;
-    if(spawnAcc >= spawnInterval){ spawnAcc -= spawnInterval; spawn(); }
-    stars.forEach(s=> s.y += s.speed*dt);
-    comets.forEach(cmt => cmt.y += cmt.speed*dt);
-    powerups.forEach(p => p.y += 80*dt);
-    // collisions
-    const shipRect = {x: ship.x, y: ship.y, w: ship.w, h: ship.h};
-    for(let i = stars.length-1; i>=0; i--){
-      let s = stars[i];
-      if(s.y > h+20) { stars.splice(i,1); continue; }
-      if(s.y > ship.y && s.x > ship.x && s.x < ship.x+ship.w){ score++; stars.splice(i,1); }
+  const now = performance.now();
+  const dt = (now - last) / 1000;
+  last = now;
+  acc += dt;
+
+  // long-press SPACE pause
+  if (spaceDown && !spaceHandled){
+    if (performance.now()/1000 - spaceTime >= 0.1){
+      paused = !paused;
+      spaceHandled = true;
+      document.getElementById("pauseOverlay").style.display = paused ? "flex" : "none";
     }
-    for(let i=comets.length-1;i>=0;i--){
-      let co=comets[i];
-      if(co.y>h+40){ comets.splice(i,1); continue; }
-      if(co.y > ship.y - 8 && co.x > ship.x && co.x < ship.x + ship.w){
-        comets.splice(i,1); lives--; if(lives<=0){ gameOver=true; break; }
+  }
+
+  if (!paused && !gameOver){
+    // movement
+    if (ship.left) ship.x -= ship.speed * dt;
+    if (ship.right) ship.x += ship.speed * dt;
+    ship.x = Math.max(10, Math.min(w - ship.w - 10, ship.x));
+
+    // spawning
+    spawnAcc += dt;
+    while (spawnAcc >= spawnInterval){
+      spawnAcc -= spawnInterval;
+      spawn();
+    }
+
+    // magnet timer
+    if (magnetActive){
+      magnetTimer -= dt;
+      if (magnetTimer <= 0){
+        magnetActive = false;
       }
     }
-    for(let i=powerups.length-1;i>=0;i--){
-      let p=powerups[i];
-      if(p.y>h+40){ powerups.splice(i,1); continue; }
-      if(p.y > ship.y - 8 && p.x > ship.x && p.x < ship.x + ship.w){
-        if(p.type === 'magnet'){ /* tiny magnet effect: collect nearby stars for 5s */ }
-        else score += 2;
+
+    // move entities
+    for (const s of stars){
+      if (magnetActive){
+        const dx = (ship.x + ship.w/2) - s.x;
+        const dy = (ship.y) - s.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 160){
+          s.x += dx / (dist || 1) * 180 * dt;
+          s.y += dy / (dist || 1) * 180 * dt;
+        } else {
+          s.y += s.speed * dt;
+        }
+      } else {
+        s.y += s.speed * dt;
+      }
+    }
+    for (const co of comets){
+      co.y += co.speed * dt;
+    }
+    for (const p of powerups){
+      p.y += 90 * dt;
+    }
+
+    // collisions + cleanup
+    // stars
+    for (let i = stars.length - 1; i >= 0; i--){
+      const s = stars[i];
+      if (s.y > h + 30){
+        stars.splice(i,1);
+        continue;
+      }
+      if (
+        s.y > ship.y - 4 &&
+        s.x > ship.x &&
+        s.x < ship.x + ship.w
+      ){
+        score++;
+        updateLevel();
+        stars.splice(i,1);
+      }
+    }
+
+    // comets
+    for (let i = comets.length - 1; i >= 0; i--){
+      const co = comets[i];
+      if (co.y > h + 40){
+        comets.splice(i,1);
+        continue;
+      }
+      if (
+        co.y > ship.y - 8 &&
+        co.x > ship.x &&
+        co.x < ship.x + ship.w
+      ){
+        comets.splice(i,1);
+        lives--;
+        updateLevel();
+        if (lives <= 0){
+          gameOver = true;
+          break;
+        }
+      }
+    }
+
+    // powerups
+    for (let i = powerups.length - 1; i >= 0; i--){
+      const p = powerups[i];
+      if (p.y > h + 40){
+        powerups.splice(i,1);
+        continue;
+      }
+      if (
+        p.y > ship.y - 8 &&
+        p.x > ship.x &&
+        p.x < ship.x + ship.w
+      ){
+        if (p.type === "magnet"){
+          magnetActive = true;
+          magnetTimer = 5;
+        } else {
+          score += 3;
+        }
+        updateLevel();
         powerups.splice(i,1);
       }
     }
   }
+
   draw();
-  if(gameOver){ ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,0,w,h); ctx.fillStyle='#fff'; ctx.fillText("Game Over - Score: "+score, w/2-80, h/2); }
-  requestAnimationFrame(loop);
-}
-function draw(){
-  ctx.clearRect(0,0,w,h);
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()||'#081028';
-  ctx.fillRect(0,0,w,h);
-  // stars
-  for(let s of stars){ ctx.fillStyle = '#ffe77a'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill(); }
-  // comets
-  for(let co of comets){
-    ctx.fillStyle = '#ff8b5a';
-    ctx.beginPath(); ctx.arc(co.x, co.y, co.r, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle='rgba(255,140,80,0.18)'; ctx.fillRect(co.x-3*co.r, co.y-3*co.r, co.r*2, co.r);
+
+  if (gameOver){
+    document.getElementById("gameOverOverlay").style.display = "flex";
+    document.getElementById("final").textContent =
+      `Score: ${score} • Level reached: ${level}`;
+    if (score > highScore){
+      highScore = score;
+      localStorage.setItem("comet_highscore", String(highScore));
+    }
+    document.getElementById("highScoreText").textContent =
+      `Best score on this device: ${highScore}`;
   }
-  // powerups
-  for(let p of powerups){ ctx.fillStyle = p.type==='magnet' ? '#8bd3ff' : '#c8ffb5'; ctx.beginPath(); ctx.arc(p.x,p.y,8,0,Math.PI*2); ctx.fill(); }
-  // ship
-  ctx.fillStyle = '#9bd4ff'; ctx.fillRect(ship.x, ship.y, ship.w, ship.h);
-  // hud
-  ctx.fillStyle='#fff'; ctx.font='14px Inter'; ctx.fillText('Score: '+score+'  Lives: '+lives, 12, 20);
+
+  requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
 </script>

@@ -1,0 +1,634 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>River Reel — GAYMZ</title>
+<style>
+:root{
+  --bg:#0b1120;
+  --fg:#e5f3ff;
+  --card:#020617;
+}
+.light{
+  --bg:#e0f2fe;
+  --fg:#0f172a;
+  --card:#ffffff;
+}
+html,body{
+  margin:0;
+  height:100%;
+  font-family:Inter,Arial,system-ui;
+  background:var(--bg);
+  color:var(--fg);
+  overflow:hidden; /* stop scroll on arrows / space */
+}
+.wrap{
+  min-height:100vh;
+  padding:16px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.card{
+  width:100%;
+  max-width:980px;
+  background:var(--card);
+  padding:16px;
+  border-radius:12px;
+  box-shadow:0 12px 36px rgba(0,0,0,.55);
+}
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+}
+canvas{
+  width:100%;
+  height:auto;
+  border-radius:8px;
+  background:linear-gradient(180deg,#93c5fd 0,#0ea5e9 40%,#0369a1 60%,#022c44 100%);
+}
+.small{
+  font-size:13px;
+}
+
+/* overlays */
+.overlay{
+  position:absolute;
+  left:0;right:0;top:0;bottom:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.overlay-inner{
+  background:var(--card);
+  padding:20px;
+  border-radius:12px;
+  text-align:center;
+  box-shadow:0 10px 30px rgba(0,0,0,.5);
+  width:min(500px,90vw);
+}
+
+/* buttons */
+.btn{
+  padding:8px 12px;
+  border-radius:8px;
+  border:0;
+  cursor:pointer;
+  font-size:14px;
+}
+.btn-primary{
+  background:#22c55e;
+  color:#022c22;
+}
+.btn-ghost{
+  background:transparent;
+  border:1px solid rgba(148,163,184,.7);
+}
+.btn-danger{
+  background:#ef4444;
+  color:#f9fafb;
+}
+
+/* mobile controls */
+.controls{
+  display:none;
+  margin-top:10px;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  user-select:none;
+}
+.controls-row{
+  display:flex;
+  gap:6px;
+}
+.ctrl-btn{
+  width:60px;
+  height:50px;
+  border-radius:12px;
+  border:0;
+  font-size:18px;
+  background:rgba(15,23,42,0.9);
+  color:#e5e7eb;
+}
+.light .ctrl-btn{
+  background:#e5e7eb;
+  color:#0f172a;
+}
+.status-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:8px;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+@media (max-width:768px){
+  .wrap{padding:8px;}
+  .card{padding:12px;}
+  .controls{display:flex;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" id="card">
+    <div class="header">
+      <div style="font-weight:700">River Reel — Game 7</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span id="hudText" class="small" style="display:none"></span>
+        <button id="theme" class="btn">☀️</button>
+        <button id="fs" class="btn">F</button>
+      </div>
+    </div>
+
+    <div style="position:relative">
+      <canvas id="c" width="920" height="420"></canvas>
+
+      <!-- Pause overlay -->
+      <div id="pauseOverlay" class="overlay" style="display:none">
+        <div class="overlay-inner">
+          <h2>Paused</h2>
+          <div style="margin-top:8px">
+            <button id="resume" class="btn btn-primary">Resume</button>
+            <button id="restart" class="btn btn-ghost">Restart</button>
+          </div>
+          <div class="small" style="margin-top:8px">
+            Short SPACE tap: cast line • Hold SPACE: pause • A/D or ←/→ to move • F fullscreen
+          </div>
+        </div>
+      </div>
+
+      <!-- Game over overlay -->
+      <div id="gameOver" class="overlay" style="display:none">
+        <div class="overlay-inner">
+          <h2>Game Over</h2>
+          <div id="final" style="margin:10px 0"></div>
+          <div id="highText" class="small" style="margin-bottom:8px"></div>
+          <div>
+            <button id="replay" class="btn btn-primary">Replay</button>
+            <button id="quit" class="btn btn-danger">Quit</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-row small">
+      <div>
+        Move the boat, tap SPACE to cast and reel, catch fish, avoid junk. Hold SPACE to pause.
+      </div>
+      <div id="levelIndicator"></div>
+    </div>
+
+    <!-- Mobile controls -->
+    <div class="controls" id="mobileControls">
+      <div class="controls-row">
+        <button class="ctrl-btn" data-act="left">◀</button>
+        <button class="ctrl-btn" data-act="cast" style="width:80px">🎣</button>
+        <button class="ctrl-btn" data-act="right">▶</button>
+      </div>
+      <div class="controls-row">
+        <button class="ctrl-btn" data-act="pause" style="width:120px">⏸ Pause</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/*
+  River Reel — Game 7
+  --------------------------------------------------------
+  RULES:
+  - You control a small fishing boat at the top of the river.
+  - Left / Right (or A / D) move the boat horizontally.
+  - QUICK tap SPACE (or 🎣 button on mobile) casts / recalls the hook:
+      • When idle  : line drops down automatically.
+      • When down  : it reels back up.
+  - Catch green fish for +1 score.
+  - Catch red junk (boots / crates) -> lose 1 life.
+  - You start with 3 lives. Reaching 0 lives ends the game.
+  - Every 6 points of score, Level increases:
+      • More fish / junk spawn.
+      • Fish & junk swim faster.
+  - HOLD SPACE briefly to toggle pause (like your other games).
+*/
+
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+const W = c.width;
+const H = c.height;
+
+const hudText = document.getElementById("hudText");
+const levelIndicator = document.getElementById("levelIndicator");
+
+/* THEME */
+let theme = localStorage.getItem("g_theme") || "dark";
+const themeBtn = document.getElementById("theme");
+function applyTheme(){
+  document.documentElement.classList.toggle("light", theme === "light");
+  themeBtn.textContent = theme === "light" ? "🌙" : "☀️";
+  localStorage.setItem("g_theme", theme);
+}
+applyTheme();
+themeBtn.onclick = () => {
+  theme = theme === "light" ? "dark" : "light";
+  applyTheme();
+};
+
+/* FULLSCREEN */
+const card = document.getElementById("card");
+document.getElementById("fs").onclick = () => {
+  if (!document.fullscreenElement) card.requestFullscreen?.();
+  else document.exitFullscreen?.();
+};
+
+/* GAME STATE */
+const BOAT_Y = 80;
+const LINE_BOTTOM_LIMIT = H - 40;
+const BASE_SPAWN = 1.2;
+
+let boat = {
+  x: W/2,
+  w: 80,
+  speed: 260,
+  dir: 0
+};
+
+let hook = {
+  state: "idle",   // "idle" | "down" | "up"
+  y: BOAT_Y+16,
+  vy: 260,
+  caught: null     // reference to fish/junk object
+};
+
+let fish = [];  // {x,y,vx,type:"good"|"bad"}
+let score = 0;
+let lives = 3;
+let level = 1;
+let spawnTimer = 0;
+let spawnInterval = BASE_SPAWN;
+let highScore = Number(localStorage.getItem("river_reel_high") || "0");
+
+let paused = false;
+let gameOver = false;
+
+let spaceDown = false;
+let spaceTime = 0;
+let spaceHandled = false; // used for pause vs tap detection
+
+function resetGame(){
+  boat.x = W/2;
+  boat.dir = 0;
+  hook.state = "idle";
+  hook.y = BOAT_Y+16;
+  hook.caught = null;
+  fish = [];
+  score = 0;
+  lives = 3;
+  level = 1;
+  spawnTimer = 0;
+  spawnInterval = BASE_SPAWN;
+  paused = false;
+  gameOver = false;
+  spaceDown = false;
+  spaceHandled = false;
+  document.getElementById("pauseOverlay").style.display = "none";
+  document.getElementById("gameOver").style.display = "none";
+  updateLevelUI();
+}
+function updateLevelUI(){
+  levelIndicator.textContent = `Score: ${score} • Lives: ${lives} • Level: ${level}`;
+}
+
+/* SPAWN fish/junk */
+function spawnObject(){
+  const y = 160 + Math.random()*(H-220);
+  const dir = Math.random()<0.5? -1:1;
+  const baseSpeed = 60 + 12*(level-1);
+  const type = Math.random()<0.72 ? "good" : "bad";
+  const x = dir === 1 ? -40 : W+40;
+  fish.push({
+    x,
+    y,
+    vx: dir * baseSpeed,
+    type
+  });
+}
+
+/* INPUT: keyboard */
+window.addEventListener("keydown", e => {
+  const k = e.key;
+  if(["ArrowLeft","ArrowRight"," ","Spacebar"].includes(k)){
+    e.preventDefault();
+  }
+  if(k==="ArrowLeft"||k==="a"||k==="A") boat.dir = -1;
+  if(k==="ArrowRight"||k==="d"||k==="D") boat.dir = 1;
+
+  if(k===" " || k==="Spacebar"){
+    // start tracking for pause vs tap
+    spaceDown = true;
+    spaceTime = performance.now()/1000;
+  }
+  if(k==="r"||k==="R") resetGame();
+  if(k==="f"||k==="F"){
+    if (!document.fullscreenElement) card.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  }
+});
+window.addEventListener("keyup", e => {
+  const k = e.key;
+  if(k==="ArrowLeft"||k==="a"||k==="A"){
+    if(boat.dir===-1) boat.dir = 0;
+  }
+  if(k==="ArrowRight"||k==="d"||k==="D"){
+    if(boat.dir===1) boat.dir = 0;
+  }
+  if(k===" " || k==="Spacebar"){
+    // if we released quickly and pause wasn't triggered, treat as cast/reel
+    const dt = performance.now()/1000 - spaceTime;
+    if(!spaceHandled && dt < 0.18 && !paused && !gameOver){
+      triggerCastOrReel();
+    }
+    spaceDown = false;
+    spaceHandled = false;
+  }
+});
+
+/* MOBILE BUTTONS */
+document.getElementById("mobileControls").addEventListener("click", e => {
+  const btn = e.target.closest(".ctrl-btn");
+  if(!btn) return;
+  const act = btn.getAttribute("data-act");
+  if(act === "left")  boat.x -= 40;
+  if(act === "right") boat.x += 40;
+  if(act === "cast")  triggerCastOrReel();
+  if(act === "pause"){
+    paused = !paused;
+    document.getElementById("pauseOverlay").style.display = paused ? "flex" : "none";
+  }
+});
+
+/* OVERLAY BUTTONS */
+document.getElementById("resume").onclick = () => {
+  paused = false;
+  document.getElementById("pauseOverlay").style.display = "none";
+};
+document.getElementById("restart").onclick = resetGame;
+document.getElementById("replay").onclick = resetGame;
+document.getElementById("quit").onclick   = () => { window.close?.(); };
+
+/* Cast / reel logic */
+function triggerCastOrReel(){
+  if(hook.state === "idle"){
+    hook.state = "down";
+  }else if(hook.state === "down" || hook.state === "up"){
+    // recall immediately
+    hook.state = "up";
+  }
+}
+
+/* GAME LOOP */
+let last = performance.now();
+
+function loop(){
+  const now = performance.now();
+  const dt = (now-last)/1000;
+  last = now;
+
+  // Hold-space pause detection
+  if(spaceDown && !spaceHandled){
+    if(performance.now()/1000 - spaceTime >= 0.18){
+      paused = !paused;
+      spaceHandled = true;
+      document.getElementById("pauseOverlay").style.display = paused ? "flex" : "none";
+    }
+  }
+
+  if(!paused && !gameOver){
+    // Level scaling
+    level = 1 + Math.floor(score / 6);
+    spawnInterval = Math.max(0.55, BASE_SPAWN - 0.08*(level-1));
+
+    // Boat movement
+    boat.x += boat.dir * boat.speed * dt;
+    boat.x = Math.max(60, Math.min(W-60, boat.x));
+
+    // Hook movement
+    if(hook.state === "down"){
+      hook.y += hook.vy * dt;
+      if(hook.y >= LINE_BOTTOM_LIMIT){
+        hook.state = "up";
+      }
+    }else if(hook.state === "up"){
+      hook.y -= hook.vy * dt;
+      if(hook.y <= BOAT_Y+16){
+        hook.y = BOAT_Y+16;
+        hook.state = "idle";
+
+        // if we have a catch, resolve it now
+        if(hook.caught){
+          if(hook.caught.type === "good"){
+            score++;
+          }else{
+            lives--;
+            if(lives <= 0) gameOver = true;
+          }
+          // remove from fish array
+          const idx = fish.indexOf(hook.caught);
+          if(idx !== -1) fish.splice(idx,1);
+          hook.caught = null;
+          updateLevelUI();
+        }
+      }
+    }else{
+      hook.y = BOAT_Y+16; // keep attached when idle
+    }
+
+    // follow boat horizontally
+    if(hook.state === "idle" || hook.state === "down" || hook.state === "up"){
+      // keep hook x same as boat
+    }
+
+    // Spawn swimmers
+    spawnTimer += dt;
+    while(spawnTimer >= spawnInterval){
+      spawnTimer -= spawnInterval;
+      spawnObject();
+    }
+
+    // Update swimmers
+    for(const f of fish){
+      f.x += f.vx * dt;
+    }
+    // Remove off-screen
+    fish = fish.filter(f => f.x > -80 && f.x < W+80);
+
+    // Hook collision if line in water
+    if(hook.state === "down" || hook.state === "up"){
+      const hx = boat.x;
+      const hy = hook.y;
+      if(!hook.caught){
+        for(const f of fish){
+          const dist = Math.hypot(hx - f.x, hy - f.y);
+          const r = f.type === "good" ? 12 : 13;
+          if(dist < r+4){
+            hook.caught = f;
+            hook.state = "up";
+            break;
+          }
+        }
+      }else{
+        // carry caught object with hook
+        hook.caught.x = hx;
+        hook.caught.y = hy+12;
+      }
+    }
+  }
+
+  draw();
+
+  if(gameOver){
+    document.getElementById("gameOver").style.display = "flex";
+    document.getElementById("final").textContent =
+      `Score: ${score} • Level: ${level}`;
+    if(score > highScore){
+      highScore = score;
+      localStorage.setItem("river_reel_high", String(highScore));
+    }
+    document.getElementById("highText").textContent =
+      `Best score on this device: ${highScore}`;
+  }
+
+  requestAnimationFrame(loop);
+}
+
+/* DRAW */
+function draw(){
+  ctx.clearRect(0,0,W,H);
+
+  // Sky gradient is via CSS; just draw water details
+  // distant hills
+  ctx.fillStyle = "#0f172a";
+  ctx.beginPath();
+  ctx.moveTo(0,130);
+  ctx.quadraticCurveTo(W*0.25,100,W*0.5,130);
+  ctx.quadraticCurveTo(W*0.75,160,W,130);
+  ctx.lineTo(W,0);ctx.lineTo(0,0);ctx.closePath();
+  ctx.fill();
+
+  // water waves
+  for(let i=0;i<5;i++){
+    const y = 170 + i*24;
+    ctx.strokeStyle = "rgba(56,189,248,0.35)";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    for(let x=0;x<=W;x+=24){
+      const off = Math.sin((x/60)+(performance.now()/600)+i)*4;
+      ctx.lineTo(x,y+off);
+    }
+    ctx.stroke();
+  }
+
+  // boat
+  const bx = boat.x;
+  const by = BOAT_Y;
+  ctx.fillStyle = "#fbbf24";
+  ctx.beginPath();
+  ctx.moveTo(bx-40,by+12);
+  ctx.lineTo(bx+40,by+12);
+  ctx.lineTo(bx+30,by+26);
+  ctx.lineTo(bx-30,by+26);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#1d4ed8";
+  ctx.fillRect(bx-18,by-10,36,22); // cabin
+  ctx.fillStyle = "#f9fafb";
+  ctx.beginPath();
+  ctx.arc(bx,by-2,5,0,Math.PI*2);
+  ctx.fill();
+
+  // mast + hook line
+  ctx.strokeStyle = "#e5e7eb";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(bx,by-10);
+  ctx.lineTo(bx,hook.y);
+  ctx.stroke();
+
+  // hook
+  ctx.fillStyle = "#e5e7eb";
+  ctx.beginPath();
+  ctx.arc(bx,hook.y,4,0,Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(bx-4,hook.y+4);
+  ctx.lineTo(bx,hook.y+10);
+  ctx.lineTo(bx+4,hook.y+4);
+  ctx.stroke();
+
+  // swimmers
+  for(const f of fish){
+    const colorBody = f.type === "good" ? "#22c55e" : "#f97373";
+    const colorEye  = "#0f172a";
+    ctx.fillStyle = colorBody;
+    ctx.beginPath();
+    ctx.ellipse(f.x,f.y,14,8,0,0,Math.PI*2);
+    ctx.fill();
+    // tail
+    ctx.beginPath();
+    ctx.moveTo(f.x-16*Math.sign(f.vx), f.y);
+    ctx.lineTo(f.x-26*Math.sign(f.vx), f.y-6);
+    ctx.lineTo(f.x-26*Math.sign(f.vx), f.y+6);
+    ctx.closePath();
+    ctx.fill();
+
+    // eye
+    ctx.fillStyle = "#f9fafb";
+    ctx.beginPath();
+    ctx.arc(f.x+6*Math.sign(f.vx),f.y-3,3,0,Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = colorEye;
+    ctx.beginPath();
+    ctx.arc(f.x+6*Math.sign(f.vx),f.y-3,1.3,0,Math.PI*2);
+    ctx.fill();
+
+    // mouth
+    ctx.strokeStyle = colorEye;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(f.x+6*Math.sign(f.vx),f.y+2,3,0,Math.PI/2 * (f.vx>0?1:-1));
+    ctx.stroke();
+
+    if(f.type === "bad"){
+      // draw as junk: small cross / crate lines
+      ctx.strokeStyle = "rgba(15,23,42,0.7)";
+      ctx.beginPath();
+      ctx.moveTo(f.x-8,f.y-6);
+      ctx.lineTo(f.x+8,f.y+6);
+      ctx.moveTo(f.x+8,f.y-6);
+      ctx.lineTo(f.x-8,f.y+6);
+      ctx.stroke();
+    }
+  }
+
+  // HUD
+  ctx.fillStyle = "#e5f3ff";
+  ctx.font = "14px Inter";
+  ctx.fillText(`Score: ${score}  Lives: ${lives}  Level: ${level}`, 12, 18);
+
+  hudText.style.display = "inline";
+  hudText.textContent = `Spawn: ${spawnInterval.toFixed(2)}s`;
+}
+
+/* START */
+updateLevelUI();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
