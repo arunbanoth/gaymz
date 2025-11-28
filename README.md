@@ -176,6 +176,20 @@ Example:
   "description": "Description here",
   "thumbnail": "/games/new-game/thumb.png"
 }
+and
+Update the /run/{game_id} mapping so the backend can return the correct launch URL (used as a fallback by the frontend):
+
+@app.get("/run/{game_id}")
+def run_game(game_id: int):
+    game_slugs = {
+        1: "snake",
+        2: "comet-collector",
+        3: "shadow-mirror",
+        4: "tether-twins",
+        5: "blaster-dash",
+        6: ""  # new game
+    }
+
 ```
 
 4. Commit and push to GitHub.  
